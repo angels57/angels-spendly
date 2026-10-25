@@ -40,14 +40,24 @@ Supabase Studio (para ver las tablas): http://127.0.0.1:54323
 
 ```
 src/
-├── app/                 rutas (App Router)
-├── components/ui/       componentes shadcn
+├── app/
+│   ├── (app)/              rutas con sesión: layout con cabecera y pestañas
+│   │   ├── page.tsx        inicio: resumen del mes + quick add
+│   │   ├── transactions/   movimientos: mes, búsqueda, filtro, añadir manual
+│   │   ├── categories/     crear, editar y borrar categorías
+│   │   └── actions.ts      Server Actions de movimientos
+│   ├── login/              magic link
+│   └── auth/callback/      canje del código del magic link
+├── components/             UI de la app (+ ui/ con los componentes shadcn)
 ├── lib/
-│   ├── supabase/        clientes browser/server + proxy de sesión + tipos
-│   └── money.ts         montos en centavos y formato
-└── proxy.ts             refresca la sesión de Supabase en cada request
+│   ├── data.ts             capa de acceso a datos (verifica la sesión)
+│   ├── parser/             texto natural → monto, fecha, categoría (+ tests)
+│   ├── schemas.ts          validación Zod compartida cliente/servidor
+│   ├── dates.ts, money.ts  utilidades (+ tests)
+│   └── supabase/           clientes browser/server + proxy de sesión + tipos
+└── proxy.ts                refresca la sesión y protege las rutas
 supabase/
-└── migrations/          esquema SQL versionado (tablas + RLS + triggers)
+└── migrations/             esquema SQL versionado (tablas + RLS + triggers)
 ```
 
 ## Notas

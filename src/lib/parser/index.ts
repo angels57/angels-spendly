@@ -59,6 +59,11 @@ export function parseExpense(
 
 // Monto ---------------------------------------------------------------------
 
+/** Solo el monto, para campos de formulario ("45,50" → 4550). */
+export function parseAmount(text: string): number | null {
+  return findAmount(text.trim())?.cents ?? null;
+}
+
 function findAmount(text: string): { cents: number; span: Span } | null {
   const candidates: { cents: number; span: Span; marked: boolean }[] = [];
   for (const m of text.matchAll(AMOUNT_RE)) {

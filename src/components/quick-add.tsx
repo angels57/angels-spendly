@@ -5,7 +5,7 @@ import { ArrowUp, CalendarDays, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createTransaction } from "@/app/actions";
+import { createTransaction } from "@/app/(app)/actions";
 import type { Category } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
