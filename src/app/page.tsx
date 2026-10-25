@@ -1,149 +1,87 @@
 import { Suspense } from "react";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { connection } from "next/server";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MonthSummary } from "@/components/month-summary";
+import { QuickAdd } from "@/components/quick-add";
+import { TransactionList } from "@/components/transaction-list";
+import { signOut } from "@/app/login/actions";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
+  getActiveList,
+  getCategories,
+  getCurrentUser,
+  getTransactions,
+} from "@/lib/data";
+import { startOfMonthISO } from "@/lib/dates";
 
-const sampleBars = [
-  { emoji: "🥑", label: "Súper", pct: 92, color: "#e1f295" },
-  { emoji: "🍔", label: "Comida", pct: 118, color: "#ffd6cc" },
-  { emoji: "🚗", label: "Transporte", pct: 64, color: "#cbe7ff" },
-  { emoji: "🎮", label: "Ocio", pct: 41, color: "#e5d4ff" },
-];
+const RECENT_LIMIT = 30;
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10">
-      <header className="flex items-center gap-3">
-        <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-2xl">
-          💰
-        </span>
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">MonAi</h1>
-          <p className="text-sm text-muted-foreground">
-            Fase 0 · entorno listo
-          </p>
-        </div>
-      </header>
-
-      <Card>
-        <CardHeader>
-          <CardDescription>Gastado este mes</CardDescription>
-          <CardTitle className="text-4xl font-extrabold">729,27 €</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex h-44 items-end justify-between gap-3">
-            {sampleBars.map((bar) => (
-              <div
-                key={bar.label}
-                className="flex h-full flex-1 flex-col items-center justify-end gap-1"
-              >
-                <div
-                  className="flex w-full flex-col items-center justify-end rounded-2xl pb-2"
-                  style={{
-                    // 120 % del presupuesto ocupa toda la altura disponible.
-                    height: `${(Math.min(bar.pct, 120) / 120) * 85}%`,
-                    background: bar.color,
-                  }}
-                >
-                  <span className="text-lg">{bar.emoji}</span>
-                  <span className="text-xs font-bold">{bar.pct}%</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {bar.label}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Datos de ejemplo: el dashboard real llega en la Fase 1.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Estado del entorno</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <StatusRow ok label="Next.js 16 + Tailwind + shadcn/ui" />
-          <Suspense
-            fallback={
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Conectando con Supabase…
-              </div>
-            }
-          >
-            <SupabaseStatus />
-          </Suspense>
-        </CardContent>
-      </Card>
-
-      <Button size="lg" className="w-full" disabled>
-        Añadir gasto (Fase 1)
-      </Button>
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6">
+      {/* Todo lo que depende de la sesión se transmite tras este Suspense. */}
+      <Suspense fallback={<DashboardSkeleton />}>
+        <Dashboard />
+      </Suspense>
     </main>
   );
 }
 
-async function checkSupabase(): Promise<string | null> {
-  try {
-    const supabase = await createClient();
-    // Sin sesión, RLS devuelve 0 filas: si no hay error, la base y el
-    // esquema responden.
-    const { error } = await supabase
-      .from("categories")
-      .select("id", { count: "exact", head: true });
-    return error ? error.message : null;
-  } catch (err) {
-    return err instanceof Error ? err.message : String(err);
-  }
-}
+async function Dashboard() {
+  // "Hoy" y "este mes" dependen de la hora: se calculan en cada request.
+  await connection();
+  const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
+  const [categories, monthTransactions, recent] = await Promise.all([
+    getCategories(list.id),
+    getTransactions(list.id, { from: startOfMonthISO() }),
+    getTransactions(list.id, { limit: RECENT_LIMIT }),
+  ]);
 
-async function SupabaseStatus() {
-  const error = await checkSupabase();
-  return error ? (
-    <StatusRow ok={false} label="Supabase no responde" detail={error} />
-  ) : (
-    <StatusRow
-      ok
-      label="Supabase conectado"
-      detail={process.env.NEXT_PUBLIC_SUPABASE_URL}
-    />
+  return (
+    <>
+      <header className="flex items-center gap-3">
+        <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-2xl">
+          {list.emoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-extrabold tracking-tight">{list.name}</h1>
+          <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+        </div>
+        <form action={signOut}>
+          <Button
+            type="submit"
+            variant="ghost"
+            size="icon"
+            aria-label="Cerrar sesión"
+          >
+            <LogOut />
+          </Button>
+        </form>
+      </header>
+
+      <MonthSummary transactions={monthTransactions} currency={list.currency} />
+      <TransactionList transactions={recent} />
+
+      <div className="sticky bottom-0 mt-auto bg-gradient-to-t from-background via-background pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <QuickAdd categories={categories} currency={list.currency} />
+      </div>
+    </>
   );
 }
 
-function StatusRow({
-  ok,
-  label,
-  detail,
-}: {
-  ok: boolean;
-  label: string;
-  detail?: string;
-}) {
-  const Icon = ok ? CheckCircle2 : XCircle;
+function DashboardSkeleton() {
   return (
-    <div className="flex items-start gap-2">
-      <Icon
-        className={`mt-0.5 size-4 shrink-0 ${ok ? "text-emerald-600" : "text-destructive"}`}
-      />
-      <div className="flex flex-col gap-1">
-        <span className="font-semibold">{label}</span>
-        {detail && (
-          <Badge variant="secondary" className="max-w-full font-mono">
-            <span className="truncate">{detail}</span>
-          </Badge>
-        )}
+    <>
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-11 rounded-2xl" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-40" />
+        </div>
       </div>
-    </div>
+      <Skeleton className="h-72 rounded-xl" />
+      <Skeleton className="h-16 rounded-xl" />
+    </>
   );
 }

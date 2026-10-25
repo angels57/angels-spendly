@@ -36,11 +36,11 @@ export type Database = {
                   }
                   Relationships: [
                     {
-      foreignKeyName: "budgets_category_id_fkey"
-      columns: ["category_id"]
-isOneToOne: false
+      foreignKeyName: "budgets_category_same_list_fkey"
+      columns: ["list_id","category_id"]
+isOneToOne: true
       referencedRelation: "categories"
-      referencedColumns: ["id"]
+      referencedColumns: ["list_id","id"]
     },{
       foreignKeyName: "budgets_list_id_fkey"
       columns: ["list_id"]
@@ -130,11 +130,11 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
-      foreignKeyName: "transactions_category_id_fkey"
-      columns: ["category_id"]
+      foreignKeyName: "transactions_category_same_list_fkey"
+      columns: ["list_id","category_id"]
 isOneToOne: false
       referencedRelation: "categories"
-      referencedColumns: ["id"]
+      referencedColumns: ["list_id","id"]
     },{
       foreignKeyName: "transactions_list_id_fkey"
       columns: ["list_id"]

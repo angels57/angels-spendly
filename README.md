@@ -21,6 +21,8 @@ npm run dev               # http://localhost:3000
 
 Supabase Studio (para ver las tablas): http://127.0.0.1:54323
 
+**Login en local:** en `/login` escribe cualquier correo (por ejemplo `prueba@monai.test`). El correo no sale de tu Mac: ábrelo en Mailpit (http://127.0.0.1:54324) y pulsa el enlace en el mismo navegador.
+
 ## Scripts
 
 | Script                         | Qué hace                                                        |

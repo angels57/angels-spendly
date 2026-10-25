@@ -29,7 +29,33 @@ export async function updateSession(request: NextRequest) {
 
   // Do not run code between createServerClient and getClaims():
   // it validates the JWT and triggers the refresh.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const signedIn = Boolean(data?.claims);
+
+  // Chequeo optimista: la autorización real está en la DAL y en RLS.
+  const { pathname } = request.nextUrl;
+  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  if (!signedIn && !isPublic) {
+    return redirectKeepingCookies(request, response, "/login");
+  }
+  if (signedIn && pathname === "/login") {
+    return redirectKeepingCookies(request, response, "/");
+  }
 
   return response;
+}
+
+const PUBLIC_PATHS = ["/login", "/auth"];
+
+function redirectKeepingCookies(
+  request: NextRequest,
+  response: NextResponse,
+  pathname: string,
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  const redirect = NextResponse.redirect(url);
+  response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  return redirect;
 }
