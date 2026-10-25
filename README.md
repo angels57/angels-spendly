@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MonAi Web
 
-## Getting Started
+App web de control de gastos. El plan completo está en [`../PLAN-WEB.md`](../PLAN-WEB.md).
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS v4 · shadcn/ui · Supabase · Vitest
+
+## Requisitos
+
+- Node 20+
+- Docker Desktop corriendo (para Supabase local)
+
+## Primeros pasos
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db:start          # levanta Supabase en Docker y aplica las migraciones
+cp .env.example .env.local
+# pega en .env.local la "Publishable key" que imprime db:start
+npm run dev               # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Supabase Studio (para ver las tablas): http://127.0.0.1:54323
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script                         | Qué hace                                                        |
+| ------------------------------ | --------------------------------------------------------------- |
+| `npm run dev`                  | Servidor de desarrollo                                          |
+| `npm run build`                | Build de producción                                             |
+| `npm test`                     | Tests (Vitest)                                                  |
+| `npm run typecheck`            | Verificación de tipos                                           |
+| `npm run lint` / `format`      | ESLint / Prettier                                               |
+| `npm run db:start` / `db:stop` | Encender/apagar Supabase local                                  |
+| `npm run db:reset`             | Recrear la base y aplicar todas las migraciones                 |
+| `npm run db:types`             | Regenerar `src/lib/supabase/database.types.ts` desde el esquema |
 
-## Learn More
+## Estructura
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                 rutas (App Router)
+├── components/ui/       componentes shadcn
+├── lib/
+│   ├── supabase/        clientes browser/server + proxy de sesión + tipos
+│   └── money.ts         montos en centavos y formato
+└── proxy.ts             refresca la sesión de Supabase en cada request
+supabase/
+└── migrations/          esquema SQL versionado (tablas + RLS + triggers)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js 16**: `middleware.ts` ahora se llama `proxy.ts`. Con `cacheComponents`, todo lo que lea cookies (la sesión) debe estar dentro de un `<Suspense>`.
+- **Montos**: `numeric(12,2)` en la base de datos y centavos (enteros) en el cliente.
+- **Seguridad**: todas las tablas tienen RLS; un usuario solo ve las listas de las que es miembro.
+- Un pre-commit hook (Husky) corre lint-staged y los tests.
