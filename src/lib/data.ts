@@ -12,7 +12,24 @@ import type { Tables } from "@/lib/supabase/database.types";
 export type Category = Pick<
   Tables<"categories">,
   "id" | "name" | "emoji" | "color" | "kind" | "keywords"
->;
+> & {
+  /** Presupuesto mensual en centavos, o null si no tiene. */
+  budgetCents: number | null;
+};
+
+const CATEGORY_COLUMNS =
+  "id, name, emoji, color, kind, keywords, budgets!budgets_category_same_list_fkey(amount)";
+
+// unique (list_id, category_id): como mucho un presupuesto por categoría.
+function withBudget<T extends { budgets: { amount: number } | null }>({
+  budgets,
+  ...category
+}: T) {
+  return {
+    ...category,
+    budgetCents: budgets ? toCents(budgets.amount) : null,
+  };
+}
 
 export type TransactionRow = {
   id: string;
@@ -22,6 +39,22 @@ export type TransactionRow = {
   note: string;
   categoryId: string | null;
   category: Pick<Category, "name" | "emoji" | "color" | "kind"> | null;
+  /** Generado por un movimiento recurrente. */
+  recurring: boolean;
+};
+
+export type RecurringRow = {
+  id: string;
+  amountCents: number;
+  currency: string;
+  note: string;
+  categoryId: string | null;
+  category: Pick<Category, "name" | "emoji" | "color" | "kind"> | null;
+  frequency: "weekly" | "monthly" | "yearly";
+  startDate: string;
+  endDate: string | null;
+  /** Próxima fecha, o null si ya terminó. */
+  nextRun: string | null;
 };
 
 export type CategoryWithCount = Category & { transactionCount: number };
@@ -67,11 +100,11 @@ export async function getCategories(listId: string): Promise<Category[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, emoji, color, kind, keywords")
+    .select(CATEGORY_COLUMNS)
     .eq("list_id", listId)
     .order("sort_order");
   if (error) throw error;
-  return data;
+  return data.map(withBudget);
 }
 
 export async function getCategoriesWithCounts(
@@ -80,12 +113,12 @@ export async function getCategoriesWithCounts(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, emoji, color, kind, keywords, transactions(count)")
+    .select(`${CATEGORY_COLUMNS}, transactions(count)`)
     .eq("list_id", listId)
     .order("sort_order");
   if (error) throw error;
   return data.map(({ transactions, ...category }) => ({
-    ...category,
+    ...withBudget(category),
     transactionCount: transactions[0]?.count ?? 0,
   }));
 }
@@ -98,7 +131,7 @@ export async function getTransactions(
   let query = supabase
     .from("transactions")
     .select(
-      "id, amount, currency, occurred_on, note, category_id, category:categories!transactions_category_same_list_fkey(name, emoji, color, kind)",
+      "id, amount, currency, occurred_on, note, category_id, recurring_id, category:categories!transactions_category_same_list_fkey(name, emoji, color, kind)",
     )
     .eq("list_id", listId)
     .order("occurred_on", { ascending: false })
@@ -120,6 +153,31 @@ export async function getTransactions(
     note: t.note,
     categoryId: t.category_id,
     category: t.category,
+    recurring: t.recurring_id !== null,
+  }));
+}
+
+export async function getRecurring(listId: string): Promise<RecurringRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("recurring_transactions")
+    .select(
+      "id, amount, currency, note, category_id, frequency, start_date, end_date, next_run, category:categories!recurring_transactions_list_id_category_id_fkey(name, emoji, color, kind)",
+    )
+    .eq("list_id", listId)
+    .order("next_run");
+  if (error) throw error;
+  return data.map((r) => ({
+    id: r.id,
+    amountCents: toCents(r.amount),
+    currency: r.currency,
+    note: r.note,
+    categoryId: r.category_id,
+    category: r.category,
+    frequency: r.frequency,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    nextRun: r.end_date && r.next_run > r.end_date ? null : r.next_run,
   }));
 }
 

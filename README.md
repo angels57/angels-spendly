@@ -25,16 +25,17 @@ Supabase Studio (para ver las tablas): http://127.0.0.1:54323
 
 ## Scripts
 
-| Script                         | Qué hace                                                        |
-| ------------------------------ | --------------------------------------------------------------- |
-| `npm run dev`                  | Servidor de desarrollo                                          |
-| `npm run build`                | Build de producción                                             |
-| `npm test`                     | Tests (Vitest)                                                  |
-| `npm run typecheck`            | Verificación de tipos                                           |
-| `npm run lint` / `format`      | ESLint / Prettier                                               |
-| `npm run db:start` / `db:stop` | Encender/apagar Supabase local                                  |
-| `npm run db:reset`             | Recrear la base y aplicar todas las migraciones                 |
-| `npm run db:types`             | Regenerar `src/lib/supabase/database.types.ts` desde el esquema |
+| Script                         | Qué hace                                                          |
+| ------------------------------ | ----------------------------------------------------------------- |
+| `npm run dev`                  | Servidor de desarrollo                                            |
+| `npm run build`                | Build de producción                                               |
+| `npm test`                     | Tests (Vitest)                                                    |
+| `npm run typecheck`            | Verificación de tipos                                             |
+| `npm run lint` / `format`      | ESLint / Prettier                                                 |
+| `npm run db:start` / `db:stop` | Encender/apagar Supabase local                                    |
+| `npm run db:reset`             | Recrear la base y aplicar todas las migraciones                   |
+| `npm run db:types`             | Regenerar `src/lib/supabase/database.types.ts` desde el esquema   |
+| `npm run icons`                | Regenerar los iconos PNG de la PWA (`scripts/generate-icons.mjs`) |
 
 ## Estructura
 
@@ -44,9 +45,12 @@ src/
 │   ├── (app)/              rutas con sesión: layout con cabecera y pestañas
 │   │   ├── page.tsx        inicio: resumen del mes + quick add
 │   │   ├── transactions/   movimientos: mes, búsqueda, filtro, añadir manual
-│   │   ├── categories/     crear, editar y borrar categorías
+│   │   ├── categories/     categorías y su presupuesto mensual
+│   │   ├── recurring/      movimientos recurrentes (alquiler, suscripciones…)
 │   │   └── actions.ts      Server Actions de movimientos
 │   ├── login/              magic link
+│   ├── offline/            página que muestra el service worker sin conexión
+│   ├── manifest.ts         manifest de la PWA
 │   └── auth/callback/      canje del código del magic link
 ├── components/             UI de la app (+ ui/ con los componentes shadcn)
 ├── lib/
@@ -66,3 +70,6 @@ supabase/
 - **Montos**: `numeric(12,2)` en la base de datos y centavos (enteros) en el cliente.
 - **Seguridad**: todas las tablas tienen RLS; un usuario solo ve las listas de las que es miembro.
 - Un pre-commit hook (Husky) corre lint-staged y los tests.
+- **PWA**: `public/sw.js` cachea los assets y muestra `/offline` sin red; no guarda páginas con datos del usuario. Solo se registra en producción (`npm run build && npm start`). Con `experimental.useOffline`, una Server Action hecha sin conexión se reintenta sola al volver (mientras la app siga abierta).
+- **Recurrentes**: `generate_recurring()` crea los movimientos pendientes; `pg_cron` la ejecuta cada día a las 00:15 UTC y la app la llama al crear un recurrente.
+- **iCloud**: si el proyecto está dentro de `~/Documents` con iCloud Drive activo, iCloud crea copias `archivo 2.tsx` al cambiar de rama y rompe TypeScript. Mejor mover el proyecto fuera de las carpetas sincronizadas (por ejemplo `~/Projects`).

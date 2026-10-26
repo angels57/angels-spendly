@@ -117,16 +117,42 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
-                },"transactions": {
+                },"recurring_transactions": {
                   Row: {
-                    "amount": number,"category_id": string | null,"created_at": string,"created_by": string,"currency": string,"id": string,"list_id": string,"note": string,"occurred_on": string,"source": Database["public"]['Enums']["transaction_source"]
+                    "amount": number,"category_id": string | null,"created_at": string,"created_by": string,"currency": string,"end_date": string | null,"frequency": Database["public"]['Enums']["recurrence_frequency"],"generated_count": number,"id": string,"list_id": string,"next_run": string,"note": string,"start_date": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency": string,"id"?: string,"list_id": string,"note"?: string,"occurred_on"?: string,"source"?: Database["public"]['Enums']["transaction_source"]
+                    "amount": number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency": string,"end_date"?: string | null,"frequency"?: Database["public"]['Enums']["recurrence_frequency"],"generated_count"?: number,"id"?: string,"list_id": string,"next_run": string,"note"?: string,"start_date": string
                   }
                   Update: {
-                    "amount"?: number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency"?: string,"id"?: string,"list_id"?: string,"note"?: string,"occurred_on"?: string,"source"?: Database["public"]['Enums']["transaction_source"]
+                    "amount"?: number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency"?: string,"end_date"?: string | null,"frequency"?: Database["public"]['Enums']["recurrence_frequency"],"generated_count"?: number,"id"?: string,"list_id"?: string,"next_run"?: string,"note"?: string,"start_date"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recurring_transactions_list_id_category_id_fkey"
+      columns: ["list_id","category_id"]
+isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["list_id","id"]
+    },{
+      foreignKeyName: "recurring_transactions_list_id_fkey"
+      columns: ["list_id"]
+isOneToOne: false
+      referencedRelation: "lists"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"transactions": {
+                  Row: {
+                    "amount": number,"category_id": string | null,"created_at": string,"created_by": string,"currency": string,"id": string,"list_id": string,"note": string,"occurred_on": string,"recurring_id": string | null,"source": Database["public"]['Enums']["transaction_source"]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency": string,"id"?: string,"list_id": string,"note"?: string,"occurred_on"?: string,"recurring_id"?: string | null,"source"?: Database["public"]['Enums']["transaction_source"]
+                  }
+                  Update: {
+                    "amount"?: number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency"?: string,"id"?: string,"list_id"?: string,"note"?: string,"occurred_on"?: string,"recurring_id"?: string | null,"source"?: Database["public"]['Enums']["transaction_source"]
                   }
                   Relationships: [
                     {
@@ -141,6 +167,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "lists"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "transactions_recurring_id_fkey"
+      columns: ["recurring_id"]
+isOneToOne: false
+      referencedRelation: "recurring_transactions"
+      referencedColumns: ["id"]
     }
                   ]
                 }
@@ -149,15 +181,21 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "is_list_member":
+            "generate_recurring":
+{ Args: { "p_list_id"?: string,"p_until"?: string }; Returns: number
+                           },
+"is_list_member":
 { Args: { "p_list_id": string }; Returns: boolean
                            },
 "is_list_owner":
 { Args: { "p_list_id": string }; Returns: boolean
+                           },
+"recurrence_date":
+{ Args: { "p_frequency": Database["public"]['Enums']["recurrence_frequency"],"p_n": number,"p_start": string }; Returns: string
                            }
           }
           Enums: {
-            "category_kind": "expense"|"income","list_role": "owner"|"editor","transaction_source": "manual"|"text"|"voice"|"ai"
+            "category_kind": "expense"|"income","list_role": "owner"|"editor","recurrence_frequency": "weekly"|"monthly"|"yearly","transaction_source": "manual"|"text"|"voice"|"ai"|"recurring"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -277,7 +315,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "category_kind": ["expense", "income"],"list_role": ["owner", "editor"],"transaction_source": ["manual", "text", "voice", "ai"]
+            "category_kind": ["expense", "income"],"list_role": ["owner", "editor"],"recurrence_frequency": ["weekly", "monthly", "yearly"],"transaction_source": ["manual", "text", "voice", "ai", "recurring"]
           }
         }
 } as const

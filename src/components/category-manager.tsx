@@ -17,6 +17,8 @@ import {
   updateCategory,
 } from "@/app/(app)/categories/actions";
 import type { CategoryWithCount } from "@/lib/data";
+import { formatMoney } from "@/lib/money";
+import { parseAmount } from "@/lib/parser";
 import {
   CATEGORY_COLORS,
   categoryInputSchema,
@@ -28,8 +30,10 @@ type Editing = { mode: "new" } | { mode: "edit"; category: CategoryWithCount };
 
 export function CategoryManager({
   categories,
+  currency,
 }: {
   categories: CategoryWithCount[];
+  currency: string;
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const close = () => setEditing(null);
@@ -75,6 +79,8 @@ export function CategoryManager({
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="font-semibold">{c.name}</span>
                         <span className="truncate text-xs text-muted-foreground">
+                          {c.budgetCents !== null &&
+                            `${formatMoney(c.budgetCents, currency)} al mes · `}
                           {c.keywords.length > 0
                             ? c.keywords.join(", ")
                             : "Sin palabras clave"}
@@ -105,6 +111,7 @@ export function CategoryManager({
               <CategoryForm
                 key={editing.mode === "edit" ? editing.category.id : "new"}
                 category={editing.mode === "edit" ? editing.category : null}
+                currency={currency}
                 onDone={close}
               />
             )}
@@ -117,9 +124,11 @@ export function CategoryManager({
 
 function CategoryForm({
   category,
+  currency,
   onDone,
 }: {
   category: CategoryWithCount | null;
+  currency: string;
   onDone: () => void;
 }) {
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
@@ -131,13 +140,24 @@ function CategoryForm({
     category?.color ?? CATEGORY_COLORS[0],
   );
   const [keywords, setKeywords] = useState(category?.keywords.join(", ") ?? "");
+  const [budget, setBudget] = useState(
+    category?.budgetCents
+      ? (category.budgetCents / 100).toFixed(2).replace(".", ",")
+      : "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
+    const budgetCents = budget.trim() ? parseAmount(budget) : null;
+    if (budget.trim() && budgetCents === null) {
+      setError("El presupuesto debe ser un monto, por ejemplo 200.");
+      return;
+    }
     const parsed = categoryInputSchema.safeParse({
+      budgetCents,
       emoji,
       name,
       kind,
@@ -251,11 +271,29 @@ function CategoryForm({
                 aria-label={`Color ${c}`}
                 className="sr-only"
               />
-              {color === c && <Check className="size-4" />}
+              {color === c && <Check className="size-4 text-neutral-900" />}
             </label>
           ))}
         </div>
       </fieldset>
+
+      {kind === "expense" && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold">
+            Presupuesto mensual ({currency})
+          </span>
+          <Input
+            value={budget}
+            onChange={(e) => setBudget(e.target.value)}
+            inputMode="decimal"
+            placeholder="Sin presupuesto"
+            className="h-11"
+          />
+          <span className="text-xs text-muted-foreground">
+            Opcional. Verás cuánto te queda cada mes en el inicio.
+          </span>
+        </label>
+      )}
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-semibold">Palabras clave</span>

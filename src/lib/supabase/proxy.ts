@@ -45,7 +45,7 @@ export async function updateSession(request: NextRequest) {
   return response;
 }
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login", "/auth", "/offline"];
 
 function redirectKeepingCookies(
   request: NextRequest,

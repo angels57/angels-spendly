@@ -1,0 +1,369 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Loader2, Plus, Repeat, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { selectClassName } from "@/components/transaction-form";
+import {
+  createRecurring,
+  deleteRecurring,
+  updateRecurring,
+} from "@/app/(app)/recurring/actions";
+import type { Category, RecurringRow } from "@/lib/data";
+import { dayLabel } from "@/lib/dates";
+import { formatMoney } from "@/lib/money";
+import { parseAmount, toISODate } from "@/lib/parser";
+import { describeRecurrence, FREQUENCY_LABELS } from "@/lib/recurrence";
+import {
+  FREQUENCIES,
+  recurringInputSchema,
+  NO_CATEGORY_COLOR,
+} from "@/lib/schemas";
+
+type Editing = { mode: "new" } | { mode: "edit"; rule: RecurringRow };
+
+export function RecurringManager({
+  rules,
+  categories,
+  currency,
+}: {
+  rules: RecurringRow[];
+  categories: Category[];
+  currency: string;
+}) {
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const close = () => setEditing(null);
+  const active = rules.filter((r) => r.nextRun !== null);
+  const finished = rules.filter((r) => r.nextRun === null);
+
+  return (
+    <div className="flex flex-col gap-6 pb-8">
+      <p className="text-sm text-muted-foreground">
+        Alquiler, suscripciones, sueldo… Se añaden solos a tus movimientos en su
+        fecha.
+      </p>
+      <Button
+        size="lg"
+        variant="outline"
+        className="h-11"
+        onClick={() => setEditing({ mode: "new" })}
+      >
+        <Plus />
+        Nuevo recurrente
+      </Button>
+
+      {[
+        { title: "Activos", items: active },
+        { title: "Terminados", items: finished },
+      ].map(
+        (section) =>
+          section.items.length > 0 && (
+            <section key={section.title} className="flex flex-col gap-1">
+              <h2 className="px-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                {section.title}
+              </h2>
+              <ul>
+                {section.items.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => setEditing({ mode: "edit", rule: r })}
+                      className="flex w-full items-center gap-3 rounded-2xl px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                    >
+                      <span
+                        className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
+                        style={{
+                          background: r.category?.color ?? NO_CATEGORY_COLOR,
+                        }}
+                      >
+                        {r.category?.emoji ?? "🔁"}
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-semibold">{r.note}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {describeRecurrence(r.frequency, r.startDate)}
+                          {r.nextRun
+                            ? ` · próximo: ${dayLabel(r.nextRun).toLowerCase()}`
+                            : r.endDate && ` · terminó ${dayLabel(r.endDate)}`}
+                        </span>
+                      </span>
+                      <span
+                        className={`font-bold tabular-nums ${r.category?.kind === "income" ? "text-emerald-600" : ""}`}
+                      >
+                        {r.category?.kind === "income" ? "+" : "−"}
+                        {formatMoney(r.amountCents, r.currency)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ),
+      )}
+
+      {rules.length === 0 && (
+        <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
+          <Repeat className="size-8" />
+          Aún no tienes movimientos recurrentes.
+        </div>
+      )}
+
+      <Drawer open={editing !== null} onOpenChange={(open) => !open && close()}>
+        <DrawerContent className="mx-auto max-w-md">
+          <DrawerHeader>
+            <DrawerTitle className="text-lg font-bold">
+              {editing?.mode === "edit"
+                ? "Editar recurrente"
+                : "Nuevo recurrente"}
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {editing && (
+              <RecurringForm
+                key={editing.mode === "edit" ? editing.rule.id : "new"}
+                rule={editing.mode === "edit" ? editing.rule : null}
+                categories={categories}
+                currency={currency}
+                onDone={close}
+              />
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </div>
+  );
+}
+
+function RecurringForm({
+  rule,
+  categories,
+  currency,
+  onDone,
+}: {
+  rule: RecurringRow | null;
+  categories: Category[];
+  currency: string;
+  onDone: () => void;
+}) {
+  const [note, setNote] = useState(rule?.note ?? "");
+  const [amount, setAmount] = useState(
+    rule ? (rule.amountCents / 100).toFixed(2).replace(".", ",") : "",
+  );
+  const [categoryId, setCategoryId] = useState(rule?.categoryId ?? "");
+  const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>(
+    rule?.frequency ?? "monthly",
+  );
+  const [startDate, setStartDate] = useState(
+    rule?.startDate ?? toISODate(new Date()),
+  );
+  const [endDate, setEndDate] = useState(rule?.endDate ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const amountCents = parseAmount(amount);
+    if (amountCents === null) {
+      setError("Escribe un monto mayor que cero, por ejemplo 9,99.");
+      return;
+    }
+    const parsed = recurringInputSchema.safeParse({
+      amountCents,
+      categoryId: categoryId || null,
+      note,
+      frequency,
+      startDate,
+      endDate: endDate || null,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Revisa los datos.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = rule
+        ? await updateRecurring(rule.id, parsed.data)
+        : await createRecurring(parsed.data);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      toast.success(
+        rule
+          ? "Recurrente guardado"
+          : result.generated
+            ? `Recurrente creado · ${result.generated} ${result.generated === 1 ? "movimiento añadido" : "movimientos añadidos"}`
+            : "Recurrente creado",
+      );
+      onDone();
+    });
+  }
+
+  function remove() {
+    if (!rule) return;
+    startTransition(async () => {
+      const result = await deleteRecurring(rule.id);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      toast.success(`${rule.note} eliminado`);
+      onDone();
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold">Nombre</span>
+        <Input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={200}
+          placeholder="Alquiler, Netflix, Sueldo…"
+          autoFocus={!rule}
+          className="h-11"
+        />
+      </label>
+      <div className="flex gap-3">
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-sm font-semibold">Monto ({currency})</span>
+          <Input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            placeholder="0,00"
+            className="h-11 font-bold"
+          />
+        </label>
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-sm font-semibold">Categoría</span>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className={selectClassName}
+          >
+            <option value="">Sin categoría</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.emoji} {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="flex gap-3">
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-sm font-semibold">Se repite</span>
+          <select
+            value={frequency}
+            onChange={(e) =>
+              setFrequency(e.target.value as (typeof FREQUENCIES)[number])
+            }
+            disabled={rule !== null}
+            className={selectClassName}
+          >
+            {FREQUENCIES.map((f) => (
+              <option key={f} value={f}>
+                {FREQUENCY_LABELS[f]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-sm font-semibold">Desde</span>
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            disabled={rule !== null}
+            className="h-11"
+          />
+        </label>
+      </div>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        {describeRecurrence(frequency, startDate)}
+        {rule && ". Para cambiar la frecuencia o el inicio, crea uno nuevo."}
+      </p>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold">Hasta (opcional)</span>
+        <Input
+          type="date"
+          value={endDate}
+          min={startDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="h-11"
+        />
+      </label>
+
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      {confirmingDelete && rule ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
+          <p className="text-sm">
+            ¿Eliminar <strong>{rule.note}</strong>? Los movimientos ya creados
+            se conservan.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 flex-1"
+              onClick={() => setConfirmingDelete(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-10 flex-1"
+              disabled={pending}
+              onClick={remove}
+            >
+              {pending && <Loader2 className="animate-spin" />}
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          {rule && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              aria-label="Eliminar recurrente"
+              disabled={pending}
+              onClick={() => setConfirmingDelete(true)}
+              className="h-11 text-destructive"
+            >
+              <Trash2 />
+            </Button>
+          )}
+          <Button
+            type="submit"
+            size="lg"
+            disabled={pending}
+            className="h-11 flex-1"
+          >
+            {pending && <Loader2 className="animate-spin" />}
+            {rule ? "Guardar cambios" : "Crear recurrente"}
+          </Button>
+        </div>
+      )}
+    </form>
+  );
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Repeat } from "lucide-react";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -15,6 +16,7 @@ import {
   updateTransaction,
 } from "@/app/(app)/actions";
 import type { Category, TransactionRow } from "@/lib/data";
+import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney } from "@/lib/money";
 
 export type TransactionGroup = {
@@ -137,12 +139,20 @@ function TransactionItem({
     >
       <span
         className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
-        style={{ background: t.category?.color ?? "var(--muted)" }}
+        style={{ background: t.category?.color ?? NO_CATEGORY_COLOR }}
       >
         {t.category?.emoji ?? "💸"}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-semibold">{title}</span>
+        <span className="flex items-center gap-1 truncate font-semibold">
+          <span className="truncate">{title}</span>
+          {t.recurring && (
+            <Repeat
+              aria-label="Recurrente"
+              className="size-3.5 shrink-0 text-muted-foreground"
+            />
+          )}
+        </span>
         {showCategory && (
           <span className="text-xs text-muted-foreground">
             {t.category?.name}

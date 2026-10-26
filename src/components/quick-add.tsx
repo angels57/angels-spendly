@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { createTransaction } from "@/app/(app)/actions";
 import type { Category } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
+import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney } from "@/lib/money";
 import { parseExpense } from "@/lib/parser";
 
@@ -16,9 +17,15 @@ const FALLBACK_CATEGORY = "Otros";
 export function QuickAdd({
   categories,
   currency,
+  month,
+  spentThisMonth,
 }: {
   categories: Category[];
   currency: string;
+  /** Mes actual "YYYY-MM": el presupuesto solo aplica a gastos de este mes. */
+  month: string;
+  /** Gastado este mes por categoría, en centavos. */
+  spentThisMonth: Record<string, number>;
 }) {
   const [text, setText] = useState("");
   // La categoría que elige el usuario a mano gana a la que adivina el parser.
@@ -33,6 +40,17 @@ export function QuickAdd({
     categories.find((c) => c.name === FALLBACK_CATEGORY)?.id ?? null;
   const categoryId = pickedCategoryId ?? parsed?.categoryId ?? fallbackId;
   const category = categories.find((c) => c.id === categoryId);
+
+  // Cuánto quedaría del presupuesto si se guarda este gasto.
+  const remainingAfter =
+    parsed?.amountCents != null &&
+    category?.budgetCents != null &&
+    category.kind === "expense" &&
+    parsed.date.startsWith(month)
+      ? category.budgetCents -
+        (spentThisMonth[category.id] ?? 0) -
+        parsed.amountCents
+      : null;
 
   function reset() {
     setText("");
@@ -96,8 +114,8 @@ export function QuickAdd({
             <select
               value={categoryId ?? ""}
               onChange={(e) => setPickedCategoryId(e.target.value || null)}
-              className="cursor-pointer appearance-none rounded-full py-1 pr-2.5 pl-2.5 font-semibold"
-              style={{ background: category?.color ?? "var(--muted)" }}
+              className="cursor-pointer appearance-none rounded-full py-1 pr-2.5 pl-2.5 font-semibold text-neutral-900"
+              style={{ background: category?.color ?? NO_CATEGORY_COLOR }}
             >
               {!categoryId && <option value="">Sin categoría</option>}
               {categories.map((c) => (
@@ -107,6 +125,19 @@ export function QuickAdd({
               ))}
             </select>
           </label>
+          {remainingAfter !== null && (
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                remainingAfter < 0
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {remainingAfter < 0
+                ? `+${formatMoney(-remainingAfter, currency)} sobre el presupuesto`
+                : `Quedarán ${formatMoney(remainingAfter, currency)}`}
+            </span>
+          )}
         </div>
       )}
       <div className="flex items-center gap-2">

@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import type { TransactionRow } from "@/lib/data";
 import { monthLabel } from "@/lib/dates";
+import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney } from "@/lib/money";
 
 const MAX_BARS = 5;
@@ -35,7 +36,7 @@ export function MonthSummary({
     const entry = byCategory.get(key) ?? {
       name: key,
       emoji: t.category?.emoji ?? "💸",
-      color: t.category?.color ?? "var(--muted)",
+      color: t.category?.color ?? NO_CATEGORY_COLOR,
       cents: 0,
     };
     entry.cents += t.amountCents;
@@ -82,7 +83,7 @@ export function MonthSummary({
                   }}
                 >
                   <span className="text-lg">{bar.emoji}</span>
-                  <span className="text-xs font-bold">
+                  <span className="text-xs font-bold text-neutral-900">
                     {Math.round((bar.cents / spent) * 100)}%
                   </span>
                 </div>

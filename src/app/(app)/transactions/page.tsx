@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
+import { Repeat } from "lucide-react";
 import { z } from "zod";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ManualAdd } from "@/components/manual-add";
@@ -96,7 +98,18 @@ async function TransactionsView({
         )}
       </p>
 
-      <ManualAdd categories={categories} currency={list.currency} />
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <ManualAdd categories={categories} currency={list.currency} />
+        </div>
+        <Link
+          href="/recurring"
+          className="flex h-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
+        >
+          <Repeat className="size-4" />
+          Recurrentes
+        </Link>
+      </div>
 
       <TransactionList
         transactions={transactions}

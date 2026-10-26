@@ -73,9 +73,12 @@ export async function updateTransaction(
   return { ok: true };
 }
 
+const SOURCES = ["manual", "text", "voice", "ai", "recurring"] as const;
+
 export type DeletedTransaction = TransactionInput & {
   id: string;
-  source: "manual" | "text" | "voice" | "ai";
+  source: (typeof SOURCES)[number];
+  recurringId: string | null;
 };
 
 export async function deleteTransaction(
@@ -91,7 +94,7 @@ export async function deleteTransaction(
     .from("transactions")
     .delete()
     .eq("id", id)
-    .select("id, amount, occurred_on, category_id, note, source")
+    .select("id, amount, occurred_on, category_id, note, source, recurring_id")
     .maybeSingle();
   if (error || !data) {
     return { ok: false, message: "No se pudo borrar. Inténtalo de nuevo." };
@@ -108,6 +111,7 @@ export async function deleteTransaction(
       categoryId: data.category_id,
       note: data.note,
       source: data.source,
+      recurringId: data.recurring_id,
     },
   };
 }
@@ -119,7 +123,8 @@ export async function restoreTransaction(
   const parsed = transactionInputSchema
     .extend({
       id: z.uuid(),
-      source: z.enum(["manual", "text", "voice", "ai"]),
+      source: z.enum(SOURCES),
+      recurringId: z.uuid().nullable(),
     })
     .safeParse(deleted);
   if (!parsed.success) return { ok: false, message: SAVE_ERROR };
@@ -135,6 +140,7 @@ export async function restoreTransaction(
     occurred_on: parsed.data.date,
     note: parsed.data.note,
     source: parsed.data.source,
+    recurring_id: parsed.data.recurringId,
   });
   if (error) return { ok: false, message: SAVE_ERROR };
 

@@ -17,5 +17,5 @@ export default function CategoriesPage() {
 async function Categories() {
   const list = await getActiveList();
   const categories = await getCategoriesWithCounts(list.id);
-  return <CategoryManager categories={categories} />;
+  return <CategoryManager categories={categories} currency={list.currency} />;
 }

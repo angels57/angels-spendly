@@ -2,10 +2,12 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BudgetProgress } from "@/components/budget-progress";
 import { MonthSummary } from "@/components/month-summary";
 import { QuickAdd } from "@/components/quick-add";
 import { TransactionList } from "@/components/transaction-list";
 import { getActiveList, getCategories, getTransactions } from "@/lib/data";
+import { budgetStatuses, spentByCategory } from "@/lib/budgets";
 import { startOfMonthISO } from "@/lib/dates";
 
 const RECENT_LIMIT = 20;
@@ -27,10 +29,19 @@ async function Dashboard() {
     getTransactions(list.id, { from: startOfMonthISO() }),
     getTransactions(list.id, { limit: RECENT_LIMIT }),
   ]);
+  const monthStart = startOfMonthISO();
+  const monthExpenses = monthTransactions.filter(
+    (t) => t.category?.kind !== "income",
+  );
 
   return (
     <>
       <MonthSummary transactions={monthTransactions} currency={list.currency} />
+      <BudgetProgress
+        statuses={budgetStatuses(categories, monthExpenses)}
+        categories={categories}
+        currency={list.currency}
+      />
       <TransactionList
         transactions={recent}
         categories={categories}
@@ -46,7 +57,12 @@ async function Dashboard() {
       )}
 
       <div className="sticky bottom-0 mt-auto bg-gradient-to-t from-background via-background pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <QuickAdd categories={categories} currency={list.currency} />
+        <QuickAdd
+          categories={categories}
+          currency={list.currency}
+          month={monthStart.slice(0, 7)}
+          spentThisMonth={spentByCategory(monthExpenses)}
+        />
       </div>
     </>
   );

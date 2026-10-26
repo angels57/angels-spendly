@@ -30,6 +30,8 @@ export const categoryInputSchema = z.object({
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   kind: z.enum(["expense", "income"]),
   keywords: z.array(z.string().trim().toLowerCase().min(1).max(30)).max(50),
+  /** Presupuesto mensual en centavos; null = sin presupuesto. */
+  budgetCents: z.int().positive().max(9_999_999_999).nullable(),
 });
 
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
@@ -45,3 +47,29 @@ export function splitKeywords(text: string) {
     ),
   ];
 }
+
+export const FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
+
+export const recurringInputSchema = z
+  .object({
+    amountCents: z.int().positive().max(9_999_999_999),
+    categoryId: z.uuid().nullable(),
+    note: z
+      .string()
+      .trim()
+      .min(1, "Ponle un nombre, como «Alquiler».")
+      .max(200),
+    frequency: z.enum(FREQUENCIES),
+    startDate: z.iso.date(),
+    endDate: z.iso.date().nullable(),
+  })
+  .refine((r) => !r.endDate || r.endDate >= r.startDate, {
+    message: "La fecha de fin no puede ser anterior al inicio.",
+    path: ["endDate"],
+  });
+
+export type RecurringInput = z.infer<typeof recurringInputSchema>;
+
+/** Fondo de lo que no tiene categoría: pastel fijo (en oscuro también),
+ * porque el texto encima siempre es oscuro. */
+export const NO_CATEGORY_COLOR = "#f3f3f3";

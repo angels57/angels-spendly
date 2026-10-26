@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { LogOut } from "lucide-react";
 import { AppNav } from "@/components/app-nav";
+import { InstallPrompt } from "@/components/pwa";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "@/app/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 
@@ -15,6 +17,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <AppHeader />
         </Suspense>
         <AppNav />
+        <InstallPrompt />
       </div>
       {children}
     </main>
@@ -32,6 +35,7 @@ async function AppHeader() {
         <h1 className="text-xl font-extrabold tracking-tight">{list.name}</h1>
         <p className="truncate text-sm text-muted-foreground">{user.email}</p>
       </div>
+      <ThemeToggle />
       <form action={signOut}>
         <Button
           type="submit"
