@@ -1,20 +1,25 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import Image from "next/image";
 
-export const metadata: Metadata = { title: "Entrar · MonAi" };
+export const metadata: Metadata = { title: "Entrar" };
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8 px-4 py-10">
       <div className="flex flex-col items-center gap-3 text-center">
-        <span className="flex size-14 items-center justify-center rounded-3xl bg-primary text-3xl">
-          💰
-        </span>
-        <h1 className="text-3xl font-extrabold tracking-tight">MonAi</h1>
-        <p className="text-muted-foreground">
-          Tus gastos, claros y sin esfuerzo.
-        </p>
+        <Image
+          src="/icons/icon-192.png"
+          alt=""
+          width={64}
+          height={64}
+          priority
+          className="rounded-2xl shadow-lg"
+        />
+        <h1 className="text-3xl font-extrabold tracking-tight">{APP_NAME}</h1>
+        <p className="text-muted-foreground">{APP_TAGLINE}</p>
       </div>
       <Suspense>
         <LoginFormWithParams searchParams={searchParams} />

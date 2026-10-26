@@ -1,17 +1,19 @@
 import type { MetadataRoute } from "next";
+import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MonAi · Tus gastos sin esfuerzo",
-    short_name: "MonAi",
-    description: "Registra tus gastos escribiendo como hablas.",
+    name: APP_NAME,
+    short_name: APP_SHORT_NAME,
+    description: APP_TAGLINE,
     lang: "es",
     start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#ffffff",
-    theme_color: "#f05b53",
+    // Pantalla de carga al abrir la app instalada: el violeta oscuro del icono.
+    background_color: "#2b2470",
+    theme_color: "#6a60d6",
     categories: ["finance", "productivity"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },

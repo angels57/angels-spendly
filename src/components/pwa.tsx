@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Share, WifiOff, X } from "lucide-react";
 import { useOffline } from "next/offline";
 import { Button } from "@/components/ui/button";
+import { APP_SHORT_NAME } from "@/lib/brand";
 
 /** Registra el service worker (solo en producción: en dev rompería el HMR). */
 export function ServiceWorkerRegistration() {
@@ -39,7 +40,7 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const DISMISSED_KEY = "monai:install-dismissed";
+const DISMISSED_KEY = "spendly:install-dismissed";
 
 function readDismissed() {
   try {
@@ -102,7 +103,7 @@ export function InstallPrompt() {
     <div className="flex items-center gap-3 rounded-2xl border bg-card p-3 text-sm">
       <span className="text-2xl">📲</span>
       <div className="flex-1">
-        <p className="font-semibold">Instala MonAi</p>
+        <p className="font-semibold">Instala {APP_SHORT_NAME}</p>
         {deferred ? (
           <p className="text-muted-foreground">
             Ábrela desde tu pantalla de inicio, como una app.

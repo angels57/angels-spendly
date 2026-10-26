@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { OfflineBanner, ServiceWorkerRegistration } from "@/components/pwa";
 import "./globals.css";
+import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -16,9 +17,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MonAi",
-  description: "Controla tus gastos sin esfuerzo.",
-  applicationName: "MonAi",
+  // Las páginas solo ponen su nombre: "Movimientos · Spendly".
+  title: { default: APP_NAME, template: `%s · ${APP_SHORT_NAME}` },
+  description: APP_TAGLINE,
+  applicationName: APP_NAME,
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/apple-touch-icon.png",
@@ -26,7 +28,7 @@ export const metadata: Metadata = {
   // iOS: pantalla completa al abrirla desde la pantalla de inicio.
   appleWebApp: {
     capable: true,
-    title: "MonAi",
+    title: APP_SHORT_NAME,
     statusBarStyle: "default",
   },
 };

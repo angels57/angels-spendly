@@ -1,4 +1,4 @@
-// Service worker de MonAi.
+// Service worker de Angel’s Spendly.
 //
 // - Los assets de /_next/static llevan hash en el nombre: cache-first.
 // - Las páginas van siempre a la red. Si no hay conexión se muestra
@@ -8,8 +8,8 @@
 //   reintenta solo al volver la conexión (experimental.useOffline).
 
 const VERSION = "v1";
-const STATIC_CACHE = `monai-static-${VERSION}`;
-const SHELL_CACHE = `monai-shell-${VERSION}`;
+const STATIC_CACHE = `spendly-static-${VERSION}`;
+const SHELL_CACHE = `spendly-shell-${VERSION}`;
 const OFFLINE_URL = "/offline";
 
 const SHELL = [OFFLINE_URL, "/icons/icon-192.png", "/manifest.webmanifest"];

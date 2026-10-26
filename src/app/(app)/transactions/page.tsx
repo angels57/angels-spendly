@@ -18,7 +18,7 @@ import {
 } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 
-export const metadata: Metadata = { title: "Movimientos · MonAi" };
+export const metadata: Metadata = { title: "Movimientos" };
 
 export default function TransactionsPage({
   searchParams,

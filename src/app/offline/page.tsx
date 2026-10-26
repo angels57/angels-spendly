@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { buttonVariants } from "@/components/ui/button";
+import { APP_SHORT_NAME } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "Sin conexión · MonAi" };
+export const metadata: Metadata = { title: "Sin conexión" };
 
 // Página estática: el service worker la guarda al instalarse y la muestra
 // cuando una navegación falla por falta de red.
@@ -11,7 +12,8 @@ export default function OfflinePage() {
       <span className="text-5xl">📡</span>
       <h1 className="text-2xl font-extrabold tracking-tight">Sin conexión</h1>
       <p className="text-muted-foreground">
-        No pudimos cargar MonAi. Revisa tu conexión y vuelve a intentarlo.
+        No pudimos cargar {APP_SHORT_NAME}. Revisa tu conexión y vuelve a
+        intentarlo.
       </p>
       {/* Recarga completa (no el router del cliente): el service worker sirve
           esta página en lugar de otra que no pudo cargarse. */}

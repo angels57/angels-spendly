@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryManager } from "@/components/category-manager";
 import { getActiveList, getCategoriesWithCounts } from "@/lib/data";
 
-export const metadata: Metadata = { title: "Categorías · MonAi" };
+export const metadata: Metadata = { title: "Categorías" };
 
 export default function CategoriesPage() {
   return (

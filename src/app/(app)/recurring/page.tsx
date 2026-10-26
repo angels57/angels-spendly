@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RecurringManager } from "@/components/recurring-manager";
 import { getActiveList, getCategories, getRecurring } from "@/lib/data";
 
-export const metadata: Metadata = { title: "Recurrentes · MonAi" };
+export const metadata: Metadata = { title: "Recurrentes" };
 
 export default function RecurringPage() {
   return (

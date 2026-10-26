@@ -28,7 +28,7 @@ async function AppHeader() {
   const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
   return (
     <header className="flex items-center gap-3">
-      <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-2xl">
+      <span className="flex size-11 items-center justify-center rounded-2xl bg-brand text-2xl">
         {list.emoji}
       </span>
       <div className="min-w-0 flex-1">
