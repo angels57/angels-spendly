@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Plus, Repeat, Trash2 } from "lucide-react";
+import { Loader2, Plus, Repeat, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/amount-input";
 import { selectClassName } from "@/components/transaction-form";
 import {
   createRecurring,
@@ -19,7 +20,8 @@ import {
 } from "@/app/(app)/recurring/actions";
 import type { Category, RecurringRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { CurrencySelect } from "@/components/currency-select";
+import { formatAmountInput, formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseAmount, toISODate } from "@/lib/parser";
 import { describeRecurrence, FREQUENCY_LABELS } from "@/lib/recurrence";
 import {
@@ -37,7 +39,7 @@ export function RecurringManager({
 }: {
   rules: RecurringRow[];
   categories: Category[];
-  currency: string;
+  currency: CurrencyCode;
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const close = () => setEditing(null);
@@ -150,13 +152,14 @@ function RecurringForm({
 }: {
   rule: RecurringRow | null;
   categories: Category[];
-  currency: string;
+  currency: CurrencyCode;
   onDone: () => void;
 }) {
   const [note, setNote] = useState(rule?.note ?? "");
   const [amount, setAmount] = useState(
-    rule ? (rule.amountCents / 100).toFixed(2).replace(".", ",") : "",
+    rule ? formatAmountInput(rule.amountCents, rule.currency) : "",
   );
+  const [currencyCode, setCurrencyCode] = useState(rule?.currency ?? currency);
   const [categoryId, setCategoryId] = useState(rule?.categoryId ?? "");
   const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>(
     rule?.frequency ?? "monthly",
@@ -173,11 +176,12 @@ function RecurringForm({
     event.preventDefault();
     const amountCents = parseAmount(amount);
     if (amountCents === null) {
-      setError("Escribe un monto mayor que cero, por ejemplo 9,99.");
+      setError("Escribe un monto mayor que cero, por ejemplo 45.000.");
       return;
     }
     const parsed = recurringInputSchema.safeParse({
       amountCents,
+      currency: currencyCode,
       categoryId: categoryId || null,
       note,
       frequency,
@@ -236,31 +240,39 @@ function RecurringForm({
       </label>
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Monto ({currency})</span>
-          <Input
+          <span className="text-sm font-semibold">Monto</span>
+          <AmountInput
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            placeholder="0,00"
+            onChange={setAmount}
+            currency={currencyCode}
             className="h-11 font-bold"
           />
         </label>
-        <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Categoría</span>
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className={selectClassName}
-          >
-            <option value="">Sin categoría</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.emoji} {c.name}
-              </option>
-            ))}
-          </select>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold">Moneda</span>
+          <CurrencySelect
+            value={currencyCode}
+            onChange={setCurrencyCode}
+            compact
+            className="w-24"
+          />
         </label>
       </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold">Categoría</span>
+        <select
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className={selectClassName}
+        >
+          <option value="">Sin categoría</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.emoji} {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1.5">
           <span className="text-sm font-semibold">Se repite</span>
@@ -294,16 +306,39 @@ function RecurringForm({
         {describeRecurrence(frequency, startDate)}
         {rule && ". Para cambiar la frecuencia o el inicio, crea uno nuevo."}
       </p>
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold">Hasta (opcional)</span>
-        <Input
-          type="date"
-          value={endDate}
-          min={startDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="h-11"
-        />
-      </label>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="recurring-end" className="text-sm font-semibold">
+          Hasta (opcional)
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id="recurring-end"
+            type="date"
+            value={endDate}
+            min={startDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-11"
+          />
+          {/* El selector de fecha del móvil no deja vaciar el campo. */}
+          {endDate && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Quitar fecha de fin"
+              onClick={() => setEndDate("")}
+              className="size-11 shrink-0"
+            >
+              <X />
+            </Button>
+          )}
+        </div>
+        {!endDate && (
+          <span className="text-xs text-muted-foreground">
+            Sin fecha de fin: se repite hasta que lo borres.
+          </span>
+        )}
+      </div>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

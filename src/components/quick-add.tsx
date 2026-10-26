@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ArrowUp, CalendarDays, Loader2 } from "lucide-react";
+import { ArrowUp, CalendarDays, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { createTransaction } from "@/app/(app)/actions";
 import type { Category } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseExpense } from "@/lib/parser";
 
 const FALLBACK_CATEGORY = "Otros";
@@ -21,7 +21,7 @@ export function QuickAdd({
   spentThisMonth,
 }: {
   categories: Category[];
-  currency: string;
+  currency: CurrencyCode;
   /** Mes actual "YYYY-MM": el presupuesto solo aplica a gastos de este mes. */
   month: string;
   /** Gastado este mes por categoría, en centavos. */
@@ -40,10 +40,13 @@ export function QuickAdd({
     categories.find((c) => c.name === FALLBACK_CATEGORY)?.id ?? null;
   const categoryId = pickedCategoryId ?? parsed?.categoryId ?? fallbackId;
   const category = categories.find((c) => c.id === categoryId);
+  // "netflix 15 usd" → USD; sin moneda escrita, la de la lista.
+  const entryCurrency = parsed?.currency ?? currency;
 
   // Cuánto quedaría del presupuesto si se guarda este gasto.
   const remainingAfter =
     parsed?.amountCents != null &&
+    entryCurrency === currency &&
     category?.budgetCents != null &&
     category.kind === "expense" &&
     parsed.date.startsWith(month)
@@ -65,9 +68,11 @@ export function QuickAdd({
       return;
     }
     const amountCents = parsed.amountCents;
+    const entry = entryCurrency;
     startTransition(async () => {
       const result = await createTransaction({
         amountCents,
+        currency: entry,
         date: parsed.date,
         categoryId,
         note: parsed.note,
@@ -78,7 +83,7 @@ export function QuickAdd({
         return;
       }
       toast.success(
-        `${category?.emoji ?? "💸"} ${formatMoney(amountCents, currency)} guardado`,
+        `${category?.emoji ?? "💸"} ${formatMoney(amountCents, entry)} guardado`,
       );
       reset();
     });
@@ -95,7 +100,7 @@ export function QuickAdd({
           className="flex flex-wrap items-center gap-1.5 px-1 pt-1 text-sm"
         >
           <span
-            className={`rounded-full px-2.5 py-1 font-bold ${
+            className={`flex h-9 items-center rounded-full px-3 font-bold ${
               parsed.amountCents === null
                 ? "bg-muted text-muted-foreground"
                 : "bg-primary/10 text-primary"
@@ -103,9 +108,9 @@ export function QuickAdd({
           >
             {parsed.amountCents === null
               ? "¿Monto?"
-              : `${category?.kind === "income" ? "+" : ""}${formatMoney(parsed.amountCents, currency)}`}
+              : `${category?.kind === "income" ? "+" : ""}${formatMoney(parsed.amountCents, entryCurrency)}`}
           </span>
-          <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+          <span className="flex h-9 items-center gap-1 rounded-full bg-muted px-3">
             <CalendarDays className="size-3.5" />
             {dayLabel(parsed.date)}
           </span>
@@ -114,7 +119,8 @@ export function QuickAdd({
             <select
               value={categoryId ?? ""}
               onChange={(e) => setPickedCategoryId(e.target.value || null)}
-              className="cursor-pointer appearance-none rounded-full py-1 pr-2.5 pl-2.5 font-semibold text-neutral-900"
+              // text-base: con menos de 16 px, iOS hace zoom al tocarlo.
+              className="h-9 cursor-pointer appearance-none rounded-full pr-7 pl-3 text-base font-semibold text-neutral-900"
               style={{ background: category?.color ?? NO_CATEGORY_COLOR }}
             >
               {!categoryId && <option value="">Sin categoría</option>}
@@ -124,10 +130,11 @@ export function QuickAdd({
                 </option>
               ))}
             </select>
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-neutral-900" />
           </label>
           {remainingAfter !== null && (
             <span
-              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              className={`flex h-9 items-center rounded-full px-3 text-xs font-semibold ${
                 remainingAfter < 0
                   ? "bg-destructive/10 text-destructive"
                   : "bg-muted text-muted-foreground"

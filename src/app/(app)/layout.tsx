@@ -42,6 +42,7 @@ async function AppHeader() {
           variant="ghost"
           size="icon"
           aria-label="Cerrar sesión"
+          className="size-11"
         >
           <LogOut />
         </Button>

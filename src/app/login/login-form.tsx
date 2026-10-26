@@ -90,7 +90,11 @@ function AuthForm({
           Enviamos un enlace a <strong>{state.email}</strong>.{" "}
           {SENT_MESSAGES[state.reason]}
         </p>
-        <Button variant="link" onClick={() => onModeChange("password")}>
+        <Button
+          variant="link"
+          className="h-11"
+          onClick={() => onModeChange("password")}
+        >
           Volver a entrar con contraseña
         </Button>
       </div>
@@ -139,7 +143,7 @@ function AuthForm({
                 <button
                   type="button"
                   onClick={() => onModeChange("reset")}
-                  className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                  className="-my-3 py-3 pl-4 text-xs text-muted-foreground underline-offset-4 hover:underline"
                 >
                   ¿La olvidaste?
                 </button>
@@ -174,19 +178,27 @@ function AuthForm({
       <div className="flex flex-col items-center gap-1 text-sm">
         {mode === "password" ? (
           <>
-            <Button variant="link" onClick={() => onModeChange("signup")}>
+            <Button
+              variant="link"
+              className="h-11"
+              onClick={() => onModeChange("signup")}
+            >
               ¿No tienes cuenta? Crear una
             </Button>
             <Button
               variant="link"
-              className="text-muted-foreground"
+              className="h-11 text-muted-foreground"
               onClick={() => onModeChange("link")}
             >
               Entrar sin contraseña, con un enlace al correo
             </Button>
           </>
         ) : (
-          <Button variant="link" onClick={() => onModeChange("password")}>
+          <Button
+            variant="link"
+            className="h-11"
+            onClick={() => onModeChange("password")}
+          >
             {mode === "signup"
               ? "¿Ya tienes cuenta? Entrar"
               : "Volver a entrar con contraseña"}

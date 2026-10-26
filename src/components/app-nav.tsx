@@ -25,7 +25,7 @@ export function AppNav() {
             key={link.href}
             href={link.href}
             aria-current={active ? "page" : undefined}
-            className={`flex-1 rounded-xl px-2 py-1.5 text-center text-sm font-semibold transition-colors ${
+            className={`flex-1 rounded-xl px-2 py-2.5 text-center text-sm font-semibold transition-colors ${
               active
                 ? "bg-background shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

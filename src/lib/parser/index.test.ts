@@ -35,6 +35,38 @@ describe("parseExpense: monto", () => {
     expect(parse(text).amountCents).toBe(cents);
   });
 
+  it.each([
+    ["almuerzo 25 mil", 2_500_000],
+    ["almuerzo 25mil", 2_500_000],
+    ["taxi 12k", 1_200_000],
+    ["arriendo 1,5 millones", 150_000_000],
+    ["moto 2 millones de pesos", 200_000_000],
+    ["mercado 120.000", 12_000_000],
+    ["mercado $120.000", 12_000_000],
+  ])("pesos: %s → %i centavos", (text, cents) => {
+    expect(parse(text).amountCents).toBe(cents);
+  });
+
+  it.each([
+    ["comida 12", null],
+    ["mercado $120.000", null],
+    ["almuerzo 20 mil pesos", null],
+    ["netflix 15 usd", "USD"],
+    ["netflix US$15", "USD"],
+    ["hotel 80 dólares", "USD"],
+    ["cena 30€", "EUR"],
+    ["cena 30 euros", "EUR"],
+    ["taxi 9000 cop", "COP"],
+    ["libro 10 libras", "GBP"],
+  ])("moneda: %s → %s", (text, currency) => {
+    expect(parse(text).currency).toBe(currency);
+  });
+
+  it("la moneda no queda en la nota", () => {
+    expect(parse("netflix 15 usd").note).toBe("Netflix");
+    expect(parse("moto 2 millones de pesos").note).toBe("Moto");
+  });
+
   it("sin número no hay monto", () => {
     expect(parse("comida").amountCents).toBeNull();
   });

@@ -17,7 +17,7 @@ import {
 } from "@/app/(app)/actions";
 import type { Category, TransactionRow } from "@/lib/data";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type CurrencyCode } from "@/lib/money";
 
 export type TransactionGroup = {
   day: string;
@@ -32,7 +32,7 @@ export function TransactionGroups({
 }: {
   groups: TransactionGroup[];
   categories: Category[];
-  currency: string;
+  currency: CurrencyCode;
 }) {
   const [editing, setEditing] = useState<TransactionRow | null>(null);
   const close = () => setEditing(null);
@@ -44,17 +44,20 @@ export function TransactionGroups({
       return;
     }
     close();
-    toast(`${formatMoney(transaction.amountCents, currency)} borrado`, {
-      // Más que los 4 s por defecto: da tiempo a pulsar "Deshacer".
-      duration: 8000,
-      action: {
-        label: "Deshacer",
-        onClick: async () => {
-          const restored = await restoreTransaction(result.data);
-          if (!restored.ok) toast.error(restored.message);
+    toast(
+      `${formatMoney(transaction.amountCents, transaction.currency)} borrado`,
+      {
+        // Más que los 4 s por defecto: da tiempo a pulsar "Deshacer".
+        duration: 8000,
+        action: {
+          label: "Deshacer",
+          onClick: async () => {
+            const restored = await restoreTransaction(result.data);
+            if (!restored.ok) toast.error(restored.message);
+          },
         },
       },
-    });
+    );
   }
 
   return (
@@ -93,6 +96,7 @@ export function TransactionGroups({
                 key={editing.id}
                 initial={{
                   amountCents: editing.amountCents,
+                  currency: editing.currency,
                   date: editing.occurredOn,
                   categoryId: editing.categoryId,
                   note: editing.note,

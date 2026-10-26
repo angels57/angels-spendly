@@ -1,4 +1,5 @@
 import * as chrono from "chrono-node";
+import type { CurrencyCode } from "@/lib/money";
 
 // Parser local (sin IA) de frases como "comida 12 ayer" o
 // "súper 45,50 el viernes pasado" → monto, fecha, categoría y nota.
@@ -11,6 +12,8 @@ export type ParserCategory = {
 
 export type ParsedExpense = {
   amountCents: number | null;
+  /** Moneda escrita ("usd", "€"…); null = la de la lista ("$", "pesos"). */
+  currency: CurrencyCode | null;
   /** Fecha local en formato YYYY-MM-DD. */
   date: string;
   categoryId: string | null;
@@ -19,12 +22,14 @@ export type ParsedExpense = {
 
 type Span = { start: number; end: number };
 
-const CURRENCY_BEFORE = String.raw`(?:[$€£]\s?)`;
-const CURRENCY_AFTER = String.raw`(?:\s?(?:[€$£]|(?:eur(?:os?)?|usd|d[oó]lares|pesos|mxn)\b))`;
+const CURRENCY_BEFORE = String.raw`(?:(?:us\$|[$€£])\s?)`;
+const CURRENCY_AFTER = String.raw`(?:\s?(?:de\s+)?(?:us\$|[€$£]|(?:usd|cop|mxn|eur(?:os?)?|d[oó]lar(?:es)?|pesos?|libras?)\b))`;
 // 1.234,56 · 1,234.56 · 45,50 · 45.50 · 12
 const NUMBER = String.raw`\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?`;
+// "25 mil", "25k", "1,5 millones": habituales en pesos.
+const MULTIPLIER = String.raw`(?:\s?(?:k|mil|mill[oó]n(?:es)?)\b)`;
 const AMOUNT_RE = new RegExp(
-  String.raw`(?<![\d/.,])(${CURRENCY_BEFORE})?(${NUMBER})(${CURRENCY_AFTER})?(?![\d/]|[.,]\d)`,
+  String.raw`(?<![\d/.,])(${CURRENCY_BEFORE})?(${NUMBER})(${MULTIPLIER})?(${CURRENCY_AFTER})?(?![\d/]|[.,]\d)`,
   "gi",
 );
 
@@ -51,6 +56,7 @@ export function parseExpense(
 
   return {
     amountCents: amount?.cents ?? null,
+    currency: amount?.currency ?? null,
     date: toISODate(date?.date ?? now),
     categoryId: findCategory(rest, categories),
     note: capitalize(rest),
@@ -64,12 +70,14 @@ export function parseAmount(text: string): number | null {
   return findAmount(text.trim())?.cents ?? null;
 }
 
-function findAmount(text: string): { cents: number; span: Span } | null {
-  const candidates: { cents: number; span: Span; marked: boolean }[] = [];
+type Amount = { cents: number; span: Span; currency: CurrencyCode | null };
+
+function findAmount(text: string): Amount | null {
+  const candidates: (Amount & { marked: boolean })[] = [];
   for (const m of text.matchAll(AMOUNT_RE)) {
     const start = m.index!;
     const end = start + m[0].length;
-    const marked = Boolean(m[1] || m[3]);
+    const marked = Boolean(m[1] || m[3] || m[4]);
     if (
       !marked &&
       (NOT_AMOUNT_AFTER.test(text.slice(end)) ||
@@ -77,14 +85,33 @@ function findAmount(text: string): { cents: number; span: Span } | null {
     ) {
       continue;
     }
-    const cents = toCents(m[2]);
-    if (cents > 0) candidates.push({ cents, span: { start, end }, marked });
+    const cents = toCents(m[2]) * multiplier(m[3]);
+    const currency = currencyOf(`${m[1] ?? ""} ${m[4] ?? ""}`);
+    if (cents > 0) {
+      candidates.push({ cents, span: { start, end }, currency, marked });
+    }
   }
   if (candidates.length === 0) return null;
   // Prioridad: el que lleva símbolo de moneda; si no, el mayor
   // ("2 cafés 8" → 8).
   const marked = candidates.find((c) => c.marked);
   return marked ?? candidates.reduce((a, b) => (b.cents > a.cents ? b : a));
+}
+
+function multiplier(word: string | undefined) {
+  if (!word) return 1;
+  return /mill/i.test(word) ? 1_000_000 : 1000;
+}
+
+// "$" y "pesos" no fijan moneda: valen la de la lista.
+function currencyOf(marker: string): CurrencyCode | null {
+  const m = normalize(marker);
+  if (/€|eur/.test(m)) return "EUR";
+  if (/us\$|usd|dolar/.test(m)) return "USD";
+  if (/£|libra/.test(m)) return "GBP";
+  if (/cop/.test(m)) return "COP";
+  if (/mxn/.test(m)) return "MXN";
+  return null;
 }
 
 function toCents(raw: string): number {

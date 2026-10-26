@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/amount-input";
+import { CurrencySelect } from "@/components/currency-select";
 import type { Category } from "@/lib/data";
+import { formatAmountInput, type CurrencyCode } from "@/lib/money";
 import { parseAmount, toISODate } from "@/lib/parser";
 import type { TransactionInput } from "@/lib/schemas";
 
@@ -22,12 +25,16 @@ export function TransactionForm({
 }: {
   initial?: TransactionInput;
   categories: Category[];
-  currency: string;
+  /** Moneda principal de la lista: la de un movimiento nuevo. */
+  currency: CurrencyCode;
   onSubmit: (input: TransactionInput) => Promise<Result>;
   onDelete?: () => Promise<void>;
 }) {
   const [amount, setAmount] = useState(
-    initial ? (initial.amountCents / 100).toFixed(2).replace(".", ",") : "",
+    initial ? formatAmountInput(initial.amountCents, initial.currency) : "",
+  );
+  const [currencyCode, setCurrencyCode] = useState(
+    initial?.currency ?? currency,
   );
   const [date, setDate] = useState(initial?.date ?? toISODate(new Date()));
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
@@ -40,13 +47,14 @@ export function TransactionForm({
     event.preventDefault();
     const amountCents = parseAmount(amount);
     if (amountCents === null) {
-      setError("Escribe un monto mayor que cero, por ejemplo 12,50.");
+      setError("Escribe un monto mayor que cero, por ejemplo 12.000.");
       return;
     }
     setError(null);
     startTransition(async () => {
       const result = await onSubmit({
         amountCents,
+        currency: currencyCode,
         date,
         categoryId: categoryId || null,
         note: note.trim(),
@@ -62,28 +70,36 @@ export function TransactionForm({
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Monto ({currency})</span>
-          <Input
+          <span className="text-sm font-semibold">Monto</span>
+          <AmountInput
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            placeholder="0,00"
+            onChange={setAmount}
+            currency={currencyCode}
             required
             autoFocus={!initial}
             className="h-11 text-lg font-bold"
           />
         </label>
-        <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Fecha</span>
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="h-11"
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold">Moneda</span>
+          <CurrencySelect
+            value={currencyCode}
+            onChange={setCurrencyCode}
+            compact
+            className="w-24"
           />
         </label>
       </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold">Fecha</span>
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+          className="h-11"
+        />
+      </label>
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-semibold">Categoría</span>
         <select
@@ -136,7 +152,7 @@ export function TransactionForm({
             aria-label="Borrar movimiento"
             disabled={deleting || pending}
             onClick={() => startDelete(onDelete)}
-            className="h-11 text-destructive"
+            className="size-11 text-destructive"
           >
             {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
           </Button>

@@ -16,7 +16,8 @@ import {
   monthTitle,
   parseMonthParam,
 } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { OtherCurrencies } from "@/components/month-summary";
+import { formatMoney, totalsByCurrency } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Movimientos" };
 
@@ -54,12 +55,8 @@ async function TransactionsView({
     }),
   ]);
 
-  let spent = 0;
-  let income = 0;
-  for (const t of transactions) {
-    if (t.category?.kind === "income") income += t.amountCents;
-    else spent += t.amountCents;
-  }
+  const [{ spentCents: spent, incomeCents: income }, ...others] =
+    totalsByCurrency(transactions, list.currency);
 
   const current = parseMonthParam(undefined);
   const next = addMonths(month, 1);
@@ -77,26 +74,29 @@ async function TransactionsView({
         categories={categories}
       />
 
-      <p className="text-sm text-muted-foreground">
-        {transactions.length}{" "}
-        {transactions.length === 1 ? "movimiento" : "movimientos"}
-        {spent > 0 && (
-          <>
-            {" · "}
-            <span className="font-semibold text-foreground">
-              −{formatMoney(spent, list.currency)}
-            </span>
-          </>
-        )}
-        {income > 0 && (
-          <>
-            {" · "}
-            <span className="font-semibold text-emerald-600">
-              +{formatMoney(income, list.currency)}
-            </span>
-          </>
-        )}
-      </p>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-sm text-muted-foreground">
+          {transactions.length}{" "}
+          {transactions.length === 1 ? "movimiento" : "movimientos"}
+          {spent > 0 && (
+            <>
+              {" · "}
+              <span className="font-semibold text-foreground">
+                −{formatMoney(spent, list.currency)}
+              </span>
+            </>
+          )}
+          {income > 0 && (
+            <>
+              {" · "}
+              <span className="font-semibold text-emerald-600">
+                +{formatMoney(income, list.currency)}
+              </span>
+            </>
+          )}
+        </p>
+        {others.length > 0 && <OtherCurrencies totals={others} />}
+      </div>
 
       <div className="flex gap-2">
         <div className="flex-1">

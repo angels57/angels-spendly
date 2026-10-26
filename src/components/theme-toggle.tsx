@@ -1,42 +1,44 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
-const NEXT = { system: "light", light: "dark", dark: "system" } as const;
-const LABEL = {
-  system: "Tema: automático",
-  light: "Tema: claro",
-  dark: "Tema: oscuro",
-} as const;
+// Lo que se ve de verdad: la clase "dark" de <html> que pone next-themes.
+// Su resolvedTheme puede ir un paso por detrás del tema del sistema, y
+// entonces el primer toque no cambiaba nada.
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
+const isDark = () => document.documentElement.classList.contains("dark");
 
-type Theme = keyof typeof NEXT;
-
-// El tema guardado solo se conoce en el cliente: en el servidor se pinta
-// el icono neutro para no provocar un desajuste de hidratación.
-const subscribe = () => () => {};
-
+/**
+ * Un toque cambia siempre a lo contrario de lo que se ve. Hasta el primer
+ * toque se sigue el tema del dispositivo ("system").
+ */
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const mounted = useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  );
-  const current: Theme =
-    mounted && theme && theme in NEXT ? (theme as Theme) : "system";
-  const Icon = current === "light" ? Sun : current === "dark" ? Moon : Monitor;
+  const { setTheme } = useTheme();
+  // En el servidor no se sabe: icono de claro, sin desajuste al hidratar.
+  const dark = useSyncExternalStore(subscribe, isDark, () => false);
+  const Icon = dark ? Moon : Sun;
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon"
-      aria-label={`${LABEL[current]}. Cambiar tema`}
-      title={LABEL[current]}
-      onClick={() => setTheme(NEXT[current])}
+      className="size-11"
+      aria-label={
+        dark ? "Tema oscuro. Cambiar a claro" : "Tema claro. Cambiar a oscuro"
+      }
+      title={dark ? "Cambiar a claro" : "Cambiar a oscuro"}
+      onClick={() => setTheme(dark ? "light" : "dark")}
     >
       <Icon />
     </Button>

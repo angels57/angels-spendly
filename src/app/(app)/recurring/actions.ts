@@ -4,7 +4,11 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 import { fromCents } from "@/lib/money";
-import { recurringInputSchema, type RecurringInput } from "@/lib/schemas";
+import {
+  currencySchema,
+  recurringInputSchema,
+  type RecurringInput,
+} from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 
 type Result = { ok: true; generated?: number } | { ok: false; message: string };
@@ -27,7 +31,7 @@ export async function createRecurring(input: RecurringInput): Promise<Result> {
     list_id: list.id,
     category_id: parsed.data.categoryId,
     amount: fromCents(parsed.data.amountCents),
-    currency: list.currency,
+    currency: parsed.data.currency,
     note: parsed.data.note,
     frequency: parsed.data.frequency,
     start_date: parsed.data.startDate,
@@ -57,6 +61,7 @@ export async function createRecurring(input: RecurringInput): Promise<Result> {
 // inicio definen el calendario: para cambiarlos, se crea otro recurrente.
 const recurringUpdateSchema = z.object({
   amountCents: z.int().positive().max(9_999_999_999),
+  currency: currencySchema,
   categoryId: z.uuid().nullable(),
   note: z.string().trim().min(1).max(200),
   endDate: z.iso.date().nullable(),
@@ -80,6 +85,7 @@ export async function updateRecurring(
     .update({
       category_id: parsed.data.categoryId,
       amount: fromCents(parsed.data.amountCents),
+      currency: parsed.data.currency,
       note: parsed.data.note,
       end_date: parsed.data.endDate,
     })
