@@ -50,7 +50,9 @@ function authError(error: AuthError, fallback: string): ErrorState {
             ? "Esa contraseña es demasiado débil. Prueba con otra más larga."
             : error.code === "same_password"
               ? "La nueva contraseña debe ser distinta de la anterior."
-              : fallback;
+              : error.code === "user_already_exists"
+                ? "Ese correo ya tiene cuenta. Entra con tu contraseña."
+                : fallback;
   return { status: "error", message };
 }
 
@@ -113,10 +115,9 @@ export async function signUp(
   if (error)
     return authError(error, "No pudimos crear la cuenta. Inténtalo de nuevo.");
 
-  // Sin confirmación por correo, Supabase devuelve la sesión al momento.
+  // Sin confirmación por correo (lo configurado): sesión al momento.
   if (data.session) redirect("/");
-  // Con confirmación (y también si el correo ya existía, para no revelarlo)
-  // toca revisar el correo.
+  // Solo si se activa "Confirm email" en Supabase: toca revisar el correo.
   return { status: "sent", email: parsed.data.email, reason: "signup" };
 }
 
