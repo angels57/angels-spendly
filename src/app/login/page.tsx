@@ -24,9 +24,6 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Suspense>
         <LoginFormWithParams searchParams={searchParams} />
       </Suspense>
-      <p className="text-center text-xs text-muted-foreground">
-        Sin contraseñas: te enviamos un enlace para entrar.
-      </p>
     </main>
   );
 }
