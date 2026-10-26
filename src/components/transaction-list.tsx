@@ -4,6 +4,7 @@ import {
 } from "@/components/transaction-groups";
 import type { Category, TransactionRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
+import type { CurrencyCode } from "@/lib/money";
 
 // Agrupa por día en el servidor; la interacción (editar/borrar) es cliente.
 export function TransactionList({
@@ -14,7 +15,7 @@ export function TransactionList({
 }: {
   transactions: TransactionRow[];
   categories: Category[];
-  currency: string;
+  currency: CurrencyCode;
   empty?: React.ReactNode;
 }) {
   if (transactions.length === 0) return empty ?? null;

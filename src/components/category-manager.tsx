@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,18 +11,22 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/amount-input";
+import { EmojiPicker } from "@/components/emoji-picker";
+import { KeywordsInput } from "@/components/keywords-input";
 import {
   createCategory,
   deleteCategory,
   updateCategory,
 } from "@/app/(app)/categories/actions";
 import type { CategoryWithCount } from "@/lib/data";
-import { formatMoney } from "@/lib/money";
+import { DEFAULT_EMOJI, suggestEmoji } from "@/lib/emoji";
+import { normalizeKeyword, suggestKeywords } from "@/lib/keywords";
+import { formatAmountInput, formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseAmount } from "@/lib/parser";
 import {
   CATEGORY_COLORS,
   categoryInputSchema,
-  splitKeywords,
   type CategoryInput,
 } from "@/lib/schemas";
 
@@ -33,7 +37,7 @@ export function CategoryManager({
   currency,
 }: {
   categories: CategoryWithCount[];
-  currency: string;
+  currency: CurrencyCode;
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const close = () => setEditing(null);
@@ -87,7 +91,7 @@ export function CategoryManager({
                         </span>
                       </span>
                       <span className="text-xs text-muted-foreground tabular-nums">
-                        {c.transactionCount}
+                        {c.transactionCount} mov.
                       </span>
                     </button>
                   </li>
@@ -112,6 +116,9 @@ export function CategoryManager({
                 key={editing.mode === "edit" ? editing.category.id : "new"}
                 category={editing.mode === "edit" ? editing.category : null}
                 currency={currency}
+                others={categories.filter(
+                  (c) => editing.mode === "new" || c.id !== editing.category.id,
+                )}
                 onDone={close}
               />
             )}
@@ -125,13 +132,19 @@ export function CategoryManager({
 function CategoryForm({
   category,
   currency,
+  others,
   onDone,
 }: {
   category: CategoryWithCount | null;
-  currency: string;
+  currency: CurrencyCode;
+  /** Emojis de las demás categorías. */
+  /** Las demás categorías: para no repetir emoji ni palabras clave. */
+  others: CategoryWithCount[];
   onDone: () => void;
 }) {
+  // Vacío = aún no elegido: se usa el sugerido por el nombre.
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [name, setName] = useState(category?.name ?? "");
   const [kind, setKind] = useState<CategoryInput["kind"]>(
     category?.kind ?? "expense",
@@ -139,13 +152,31 @@ function CategoryForm({
   const [color, setColor] = useState<string>(
     category?.color ?? CATEGORY_COLORS[0],
   );
-  const [keywords, setKeywords] = useState(category?.keywords.join(", ") ?? "");
+  const [keywords, setKeywords] = useState(category?.keywords ?? []);
   const [budget, setBudget] = useState(
     category?.budgetCents
-      ? (category.budgetCents / 100).toFixed(2).replace(".", ",")
+      ? formatAmountInput(category.budgetCents, currency)
       : "",
   );
   const [error, setError] = useState<string | null>(null);
+  const suggestion = suggestEmoji(name);
+  const shownEmoji = emoji || suggestion || DEFAULT_EMOJI;
+  const budgetPreview =
+    kind === "expense" && budget.trim() ? parseAmount(budget) : null;
+  const usedEmojis = new Set(others.map((c) => c.emoji));
+  // El parser también elige por el nombre de la categoría: cuenta igual.
+  const keywordOwners = new Map(
+    others.flatMap((c) =>
+      [c.name, ...c.keywords].map(
+        (word) => [normalizeKeyword(word), `${c.emoji} ${c.name}`] as const,
+      ),
+    ),
+  );
+  const keywordSuggestions = suggestKeywords(
+    name,
+    keywords,
+    new Set(keywordOwners.keys()),
+  );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -158,11 +189,11 @@ function CategoryForm({
     }
     const parsed = categoryInputSchema.safeParse({
       budgetCents,
-      emoji,
+      emoji: shownEmoji,
       name,
       kind,
       color,
-      keywords: splitKeywords(keywords),
+      keywords: keywords.map((k) => k.trim().toLowerCase()),
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Revisa los datos.");
@@ -197,30 +228,66 @@ function CategoryForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="flex gap-3">
-        <label className="flex w-20 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Emoji</span>
-          <Input
-            value={emoji}
-            onChange={(e) => setEmoji(e.target.value)}
-            maxLength={16}
-            placeholder="🍕"
-            className="h-11 text-center text-xl"
-            style={{ background: color }}
-          />
-        </label>
-        <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Nombre</span>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={40}
-            placeholder="Mascotas"
-            autoFocus={!category}
-            className="h-11"
-          />
-        </label>
+      {/* Vista previa: así se verá en la lista. El emoji abre el selector. */}
+      <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-3">
+        <button
+          type="button"
+          onClick={() => setPickerOpen((open) => !open)}
+          aria-expanded={pickerOpen}
+          aria-label={`Emoji: ${shownEmoji}. Cambiar`}
+          className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl text-3xl ring-ring focus-visible:ring-2 focus-visible:outline-none"
+          style={{ background: color }}
+        >
+          {shownEmoji}
+          <span className="absolute -right-1.5 -bottom-1.5 flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-sm">
+            <Pencil className="size-3" />
+          </span>
+        </button>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-semibold">
+            {name.trim() || "Nombre de la categoría"}
+          </span>
+          <span className="truncate text-xs text-muted-foreground">
+            {kind === "income"
+              ? "Ingreso"
+              : budgetPreview !== null &&
+                `${formatMoney(budgetPreview, currency)} al mes · `}
+            {kind === "expense" &&
+              (keywords.length > 0
+                ? keywords.join(", ")
+                : "Sin palabras clave")}
+          </span>
+          {!emoji && suggestion && (
+            <span className="text-xs text-primary">
+              Emoji sugerido por el nombre · toca para cambiarlo
+            </span>
+          )}
+        </div>
       </div>
+
+      {pickerOpen && (
+        <EmojiPicker
+          value={shownEmoji}
+          onSelect={(next) => {
+            setEmoji(next);
+            setPickerOpen(false);
+          }}
+          suggestion={suggestion}
+          used={usedEmojis}
+        />
+      )}
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold">Nombre</span>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={40}
+          placeholder="Mascotas"
+          autoFocus={!category}
+          className="h-11"
+        />
+      </label>
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-sm font-semibold">Tipo</legend>
@@ -233,7 +300,7 @@ function CategoryForm({
           ).map(([value, label]) => (
             <label
               key={value}
-              className={`flex-1 cursor-pointer rounded-xl py-1.5 text-center text-sm font-semibold has-focus-visible:ring-2 has-focus-visible:ring-ring ${
+              className={`flex-1 cursor-pointer rounded-xl py-3 text-center text-sm font-semibold has-focus-visible:ring-2 has-focus-visible:ring-ring ${
                 kind === value
                   ? "bg-background shadow-sm"
                   : "text-muted-foreground"
@@ -259,7 +326,7 @@ function CategoryForm({
           {CATEGORY_COLORS.map((c) => (
             <label
               key={c}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-full border has-focus-visible:ring-2 has-focus-visible:ring-ring"
+              className="flex size-11 cursor-pointer items-center justify-center rounded-full border has-focus-visible:ring-2 has-focus-visible:ring-ring"
               style={{ background: c }}
             >
               <input
@@ -282,10 +349,10 @@ function CategoryForm({
           <span className="text-sm font-semibold">
             Presupuesto mensual ({currency})
           </span>
-          <Input
+          <AmountInput
             value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            inputMode="decimal"
+            onChange={setBudget}
+            currency={currency}
             placeholder="Sin presupuesto"
             className="h-11"
           />
@@ -295,19 +362,21 @@ function CategoryForm({
         </label>
       )}
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold">Palabras clave</span>
-        <Input
-          value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
-          placeholder="veterinario, croquetas"
-          className="h-11"
-        />
-        <span className="text-xs text-muted-foreground">
-          Separadas por comas. Si escribes una de estas palabras en el quick
-          add, se elige esta categoría.
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="keywords" className="text-sm font-semibold">
+          Palabras clave
+        </label>
+        <span className="-mt-1 text-xs text-muted-foreground">
+          Si escribes una en el quick add, se elige esta categoría. Escribe y
+          pulsa Enter o coma; toca una para quitarla.
         </span>
-      </label>
+        <KeywordsInput
+          value={keywords}
+          onChange={setKeywords}
+          suggestions={keywordSuggestions}
+          usedBy={keywordOwners}
+        />
+      </div>
 
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -355,7 +424,7 @@ function CategoryForm({
               aria-label="Eliminar categoría"
               disabled={pending}
               onClick={() => setConfirmingDelete(true)}
-              className="h-11 text-destructive"
+              className="size-11 text-destructive"
             >
               <Trash2 />
             </Button>

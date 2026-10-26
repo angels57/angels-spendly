@@ -8,7 +8,12 @@ import {
 import type { TransactionRow } from "@/lib/data";
 import { monthLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
-import { formatMoney } from "@/lib/money";
+import {
+  formatMoney,
+  totalsByCurrency,
+  type CurrencyTotals,
+  type CurrencyCode,
+} from "@/lib/money";
 
 const MAX_BARS = 5;
 
@@ -17,7 +22,7 @@ export function MonthSummary({
   currency,
 }: {
   transactions: TransactionRow[];
-  currency: string;
+  currency: CurrencyCode;
 }) {
   let spent = 0;
   let income = 0;
@@ -26,7 +31,12 @@ export function MonthSummary({
     { name: string; emoji: string; color: string; cents: number }
   >();
 
+  // Sin tipos de cambio, los totales y las barras son de la moneda
+  // principal; el resto se muestra aparte.
+  const others = totalsByCurrency(transactions, currency).slice(1);
+
   for (const t of transactions) {
+    if (t.currency !== currency) continue;
     if (t.category?.kind === "income") {
       income += t.amountCents;
       continue;
@@ -62,6 +72,7 @@ export function MonthSummary({
             +{formatMoney(income, currency)} de ingresos
           </p>
         )}
+        {others.length > 0 && <OtherCurrencies totals={others} />}
       </CardHeader>
       <CardContent>
         {bars.length === 0 ? (
@@ -69,11 +80,11 @@ export function MonthSummary({
             Aún no hay gastos este mes. Escribe el primero abajo 👇
           </p>
         ) : (
-          <div className="flex h-44 items-end gap-3">
+          <div className="flex h-44 items-end justify-center gap-3">
             {bars.map((bar) => (
               <div
                 key={bar.name}
-                className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                className="flex h-full max-w-20 min-w-0 flex-1 flex-col items-center justify-end gap-1"
               >
                 <div
                   className="flex min-h-14 w-full flex-col items-center justify-end rounded-2xl pb-2"
@@ -96,5 +107,18 @@ export function MonthSummary({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** "Además: US$ 20,00 · +12,00 €" */
+export function OtherCurrencies({ totals }: { totals: CurrencyTotals[] }) {
+  const parts = totals.flatMap((t) => [
+    ...(t.spentCents > 0 ? [formatMoney(t.spentCents, t.currency)] : []),
+    ...(t.incomeCents > 0
+      ? [`+${formatMoney(t.incomeCents, t.currency)}`]
+      : []),
+  ]);
+  return (
+    <p className="text-sm text-muted-foreground">Además: {parts.join(" · ")}</p>
   );
 }

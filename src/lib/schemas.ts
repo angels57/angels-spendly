@@ -1,9 +1,14 @@
 import { z } from "zod";
+import { isSingleEmoji } from "@/lib/emoji";
+import { CURRENCY_CODES } from "@/lib/money";
 
 // Validación compartida por formularios (cliente) y Server Actions (servidor).
 
+export const currencySchema = z.enum(CURRENCY_CODES);
+
 export const transactionInputSchema = z.object({
   amountCents: z.int().positive().max(9_999_999_999),
+  currency: currencySchema,
   date: z.iso.date(),
   categoryId: z.uuid().nullable(),
   note: z.string().trim().max(200),
@@ -26,7 +31,7 @@ export const CATEGORY_COLORS = [
 
 export const categoryInputSchema = z.object({
   name: z.string().trim().min(1, "Ponle un nombre.").max(40),
-  emoji: z.string().trim().min(1, "Elige un emoji.").max(16),
+  emoji: z.string().trim().refine(isSingleEmoji, "Elige un solo emoji."),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   kind: z.enum(["expense", "income"]),
   keywords: z.array(z.string().trim().toLowerCase().min(1).max(30)).max(50),
@@ -36,23 +41,12 @@ export const categoryInputSchema = z.object({
 
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
-/** "uber, taxi,  Metro" → ["uber", "taxi", "metro"] sin duplicados. */
-export function splitKeywords(text: string) {
-  return [
-    ...new Set(
-      text
-        .split(",")
-        .map((k) => k.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-}
-
 export const FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
 
 export const recurringInputSchema = z
   .object({
     amountCents: z.int().positive().max(9_999_999_999),
+    currency: currencySchema,
     categoryId: z.uuid().nullable(),
     note: z
       .string()

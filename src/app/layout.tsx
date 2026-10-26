@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Nunito } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
+import { KeyboardInset } from "@/components/keyboard-inset";
 import { OfflineBanner, ServiceWorkerRegistration } from "@/components/pwa";
 import "./globals.css";
 import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
@@ -34,6 +35,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Android: el teclado encoge la página en vez de taparla, así el quick add
+  // y los drawers quedan encima. En iOS se usa --keyboard-inset (KeyboardInset).
+  interactiveWidget: "resizes-content",
   // Color de la barra del navegador/sistema según el tema del dispositivo.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -56,6 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* Arriba: abajo taparía el quick add en el celular. */}
           <Toaster position="top-center" />
           <ServiceWorkerRegistration />
+          <KeyboardInset />
         </ThemeProvider>
       </body>
     </html>

@@ -2,9 +2,13 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
-import { fromCents, toCents } from "@/lib/money";
+import { asCurrencyCode, fromCents, toCents } from "@/lib/money";
 import { getActiveList, getCurrentUser } from "@/lib/data";
-import { transactionInputSchema, type TransactionInput } from "@/lib/schemas";
+import {
+  currencySchema,
+  transactionInputSchema,
+  type TransactionInput,
+} from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 
 // Las Server Actions se pueden llamar con un POST directo: siempre validar
@@ -34,7 +38,7 @@ export async function createTransaction(
     list_id: list.id,
     category_id: parsed.data.categoryId,
     amount: fromCents(parsed.data.amountCents),
-    currency: list.currency,
+    currency: parsed.data.currency,
     occurred_on: parsed.data.date,
     note: parsed.data.note,
     source: parsed.data.source,
@@ -61,6 +65,7 @@ export async function updateTransaction(
     .update({
       category_id: parsed.data.categoryId,
       amount: fromCents(parsed.data.amountCents),
+      currency: parsed.data.currency,
       occurred_on: parsed.data.date,
       note: parsed.data.note,
     })
@@ -94,7 +99,9 @@ export async function deleteTransaction(
     .from("transactions")
     .delete()
     .eq("id", id)
-    .select("id, amount, occurred_on, category_id, note, source, recurring_id")
+    .select(
+      "id, amount, currency, occurred_on, category_id, note, source, recurring_id",
+    )
     .maybeSingle();
   if (error || !data) {
     return { ok: false, message: "No se pudo borrar. Inténtalo de nuevo." };
@@ -107,6 +114,7 @@ export async function deleteTransaction(
     data: {
       id: data.id,
       amountCents: toCents(data.amount),
+      currency: asCurrencyCode(data.currency),
       date: data.occurred_on,
       categoryId: data.category_id,
       note: data.note,
@@ -136,13 +144,35 @@ export async function restoreTransaction(
     list_id: list.id,
     category_id: parsed.data.categoryId,
     amount: fromCents(parsed.data.amountCents),
-    currency: list.currency,
+    currency: parsed.data.currency,
     occurred_on: parsed.data.date,
     note: parsed.data.note,
     source: parsed.data.source,
     recurring_id: parsed.data.recurringId,
   });
   if (error) return { ok: false, message: SAVE_ERROR };
+
+  refresh();
+  return { ok: true };
+}
+
+/** Moneda principal de la lista: la de totales y presupuestos. */
+export async function setListCurrency(currency: string): Promise<Result> {
+  await getCurrentUser();
+  const parsed = currencySchema.safeParse(currency);
+  if (!parsed.success) return { ok: false, message: "Moneda no válida." };
+
+  const list = await getActiveList();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("lists")
+    .update({ currency: parsed.data })
+    .eq("id", list.id)
+    .select("id");
+  // Sin filas: RLS solo deja cambiarla al dueño de la lista.
+  if (error || data.length === 0) {
+    return { ok: false, message: "Solo el dueño de la lista puede cambiarla." };
+  }
 
   refresh();
   return { ok: true };

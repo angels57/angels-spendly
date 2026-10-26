@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { toCents } from "@/lib/money";
+import { asCurrencyCode, toCents, type CurrencyCode } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -34,7 +34,7 @@ function withBudget<T extends { budgets: { amount: number } | null }>({
 export type TransactionRow = {
   id: string;
   amountCents: number;
-  currency: string;
+  currency: CurrencyCode;
   occurredOn: string;
   note: string;
   categoryId: string | null;
@@ -46,7 +46,7 @@ export type TransactionRow = {
 export type RecurringRow = {
   id: string;
   amountCents: number;
-  currency: string;
+  currency: CurrencyCode;
   note: string;
   categoryId: string | null;
   category: Pick<Category, "name" | "emoji" | "color" | "kind"> | null;
@@ -93,7 +93,7 @@ export const getActiveList = cache(async () => {
     .limit(1)
     .single();
   if (error) throw error;
-  return data;
+  return { ...data, currency: asCurrencyCode(data.currency) };
 });
 
 export async function getCategories(listId: string): Promise<Category[]> {
@@ -148,7 +148,7 @@ export async function getTransactions(
   return data.map((t) => ({
     id: t.id,
     amountCents: toCents(t.amount),
-    currency: t.currency,
+    currency: asCurrencyCode(t.currency),
     occurredOn: t.occurred_on,
     note: t.note,
     categoryId: t.category_id,
@@ -170,7 +170,7 @@ export async function getRecurring(listId: string): Promise<RecurringRow[]> {
   return data.map((r) => ({
     id: r.id,
     amountCents: toCents(r.amount),
-    currency: r.currency,
+    currency: asCurrencyCode(r.currency),
     note: r.note,
     categoryId: r.category_id,
     category: r.category,

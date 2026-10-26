@@ -13,13 +13,14 @@ import {
 import { TransactionForm } from "@/components/transaction-form";
 import { createTransaction } from "@/app/(app)/actions";
 import type { Category } from "@/lib/data";
+import type { CurrencyCode } from "@/lib/money";
 
 export function ManualAdd({
   categories,
   currency,
 }: {
   categories: Category[];
-  currency: string;
+  currency: CurrencyCode;
 }) {
   const [open, setOpen] = useState(false);
 

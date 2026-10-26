@@ -54,7 +54,7 @@ export function TransactionFilters({
         <Link
           href={filtersHref({ ...filters, month: prevMonth })}
           aria-label="Mes anterior"
-          className="rounded-full p-2 hover:bg-muted"
+          className="rounded-full p-3 hover:bg-muted"
         >
           <ChevronLeft className="size-5" />
         </Link>
@@ -65,7 +65,7 @@ export function TransactionFilters({
           <Link
             href={filtersHref({ ...filters, month: nextMonth })}
             aria-label="Mes siguiente"
-            className="rounded-full p-2 hover:bg-muted"
+            className="rounded-full p-3 hover:bg-muted"
           >
             <ChevronRight className="size-5" />
           </Link>

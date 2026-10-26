@@ -30,8 +30,9 @@ async function Dashboard() {
     getTransactions(list.id, { limit: RECENT_LIMIT }),
   ]);
   const monthStart = startOfMonthISO();
+  // Los presupuestos están en la moneda principal.
   const monthExpenses = monthTransactions.filter(
-    (t) => t.category?.kind !== "income",
+    (t) => t.category?.kind !== "income" && t.currency === list.currency,
   );
 
   return (
