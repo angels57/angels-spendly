@@ -15,6 +15,7 @@ import { AmountInput } from "@/components/amount-input";
 import { EmojiPicker } from "@/components/emoji-picker";
 import { FormFooter } from "@/components/form-footer";
 import { KeywordsInput } from "@/components/keywords-input";
+import { SwipeRow } from "@/components/swipe-row";
 import {
   createCategory,
   deleteCategory,
@@ -42,6 +43,8 @@ export function CategoryManager({
   currency: CurrencyCode;
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
+  // Solo una fila deslizada (abierta) a la vez.
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const close = () => setEditing(null);
 
   const sections = [
@@ -71,31 +74,46 @@ export function CategoryManager({
               <ul>
                 {section.items.map((c) => (
                   <li key={c.id}>
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ mode: "edit", category: c })}
-                      className="flex w-full items-center gap-3 rounded-2xl px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                    <SwipeRow
+                      open={swipedId === c.id}
+                      onOpenChange={(open) => setSwipedId(open ? c.id : null)}
+                      onEdit={() => {
+                        setSwipedId(null);
+                        setEditing({ mode: "edit", category: c });
+                      }}
+                      onDelete={async () => {
+                        const error = await deleteWithUndo(c);
+                        if (error) toast.error(error);
+                      }}
                     >
-                      <span
-                        className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
-                        style={{ background: c.color }}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditing({ mode: "edit", category: c })
+                        }
+                        className="flex w-full items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                       >
-                        {c.emoji}
-                      </span>
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="font-semibold">{c.name}</span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {c.budgetCents !== null &&
-                            `${formatMoney(c.budgetCents, currency)} al mes · `}
-                          {c.keywords.length > 0
-                            ? c.keywords.join(", ")
-                            : "Sin palabras clave"}
+                        <span
+                          className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
+                          style={{ background: c.color }}
+                        >
+                          {c.emoji}
                         </span>
-                      </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {c.transactionCount} mov.
-                      </span>
-                    </button>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="font-semibold">{c.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {c.budgetCents !== null &&
+                              `${formatMoney(c.budgetCents, currency)} al mes · `}
+                            {c.keywords.length > 0
+                              ? c.keywords.join(", ")
+                              : "Sin palabras clave"}
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {c.transactionCount} mov.
+                        </span>
+                      </button>
+                    </SwipeRow>
                   </li>
                 ))}
               </ul>
@@ -217,27 +235,9 @@ function CategoryForm({
   function remove() {
     if (!category) return;
     startTransition(async () => {
-      const result = await deleteCategory(category.id);
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      onDone();
-      const { transactionCount: count } = category;
-      toast(`${category.emoji} ${category.name} eliminada`, {
-        description:
-          count > 0
-            ? `${count} ${count === 1 ? "movimiento quedó" : "movimientos quedaron"} sin categoría.`
-            : undefined,
-        duration: 8000,
-        action: {
-          label: "Deshacer",
-          onClick: async () => {
-            const restored = await restoreCategory(result.data);
-            if (!restored.ok) toast.error(restored.message);
-          },
-        },
-      });
+      const error = await deleteWithUndo(category);
+      if (error) setError(error);
+      else onDone();
     });
   }
 
@@ -406,4 +406,31 @@ function CategoryForm({
       />
     </form>
   );
+}
+
+/**
+ * Borra la categoría y ofrece deshacer (vuelve con su presupuesto y sus
+ * movimientos). Devuelve el mensaje de error, o null si se borró.
+ */
+async function deleteWithUndo(
+  category: CategoryWithCount,
+): Promise<string | null> {
+  const result = await deleteCategory(category.id);
+  if (!result.ok) return result.message;
+  const { transactionCount: count } = category;
+  toast(`${category.emoji} ${category.name} eliminada`, {
+    description:
+      count > 0
+        ? `${count} ${count === 1 ? "movimiento quedó" : "movimientos quedaron"} sin categoría.`
+        : undefined,
+    duration: 8000,
+    action: {
+      label: "Deshacer",
+      onClick: async () => {
+        const restored = await restoreCategory(result.data);
+        if (!restored.ok) toast.error(restored.message);
+      },
+    },
+  });
+  return null;
 }
