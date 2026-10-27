@@ -26,7 +26,7 @@ export function CurrencySettings({ currency }: { currency: CurrencyCode }) {
   }
 
   return (
-    <section className="flex flex-col gap-1.5 rounded-xl border p-4">
+    <div className="flex flex-col gap-1.5">
       <label htmlFor="list-currency" className="text-sm font-semibold">
         Moneda principal
       </label>
@@ -41,6 +41,6 @@ export function CurrencySettings({ currency }: { currency: CurrencyCode }) {
         Los totales y presupuestos se calculan en esta moneda. Puedes anotar
         gastos en otras (por ejemplo «netflix 15 usd»): se muestran aparte.
       </p>
-    </section>
+    </div>
   );
 }

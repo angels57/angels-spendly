@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ArrowUp, CalendarDays, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowUp, CalendarDays, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createTransaction } from "@/app/(app)/actions";
-import type { Category } from "@/lib/data";
+import type { Category, TransactionRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
@@ -19,6 +19,7 @@ export function QuickAdd({
   currency,
   month,
   spentThisMonth,
+  onOptimistic,
 }: {
   categories: Category[];
   currency: CurrencyCode;
@@ -26,11 +27,13 @@ export function QuickAdd({
   month: string;
   /** Gastado este mes por categoría, en centavos. */
   spentThisMonth: Record<string, number>;
+  /** Muestra el gasto en la lista al instante, antes de que se confirme. */
+  onOptimistic?: (transaction: TransactionRow) => void;
 }) {
   const [text, setText] = useState("");
   // La categoría que elige el usuario a mano gana a la que adivina el parser.
   const [pickedCategoryId, setPickedCategoryId] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const parsed = useMemo(
     () => (text.trim() ? parseExpense(text, categories) : null),
@@ -62,14 +65,36 @@ export function QuickAdd({
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!parsed || pending) return;
+    if (!parsed) return;
     if (parsed.amountCents === null) {
       toast.error("Falta el monto", { description: "Por ejemplo: comida 12" });
       return;
     }
     const amountCents = parsed.amountCents;
     const entry = entryCurrency;
+    const typed = { text, pickedCategoryId };
+    // El cuadro se vacía al momento para poder seguir escribiendo; si el
+    // guardado falla, lo escrito vuelve.
+    reset();
     startTransition(async () => {
+      onOptimistic?.({
+        id: `pending-${crypto.randomUUID()}`,
+        amountCents,
+        currency: entry,
+        occurredOn: parsed.date,
+        note: parsed.note,
+        categoryId,
+        category: category
+          ? {
+              name: category.name,
+              emoji: category.emoji,
+              color: category.color,
+              kind: category.kind,
+            }
+          : null,
+        recurring: false,
+        pending: true,
+      });
       const result = await createTransaction({
         amountCents,
         currency: entry,
@@ -80,12 +105,13 @@ export function QuickAdd({
       });
       if (!result.ok) {
         toast.error(result.message);
+        setText(typed.text);
+        setPickedCategoryId(typed.pickedCategoryId);
         return;
       }
       toast.success(
         `${category?.emoji ?? "💸"} ${formatMoney(amountCents, entry)} guardado`,
       );
-      reset();
     });
   }
 
@@ -161,10 +187,11 @@ export function QuickAdd({
           type="submit"
           size="icon"
           aria-label="Guardar gasto"
-          disabled={!parsed || pending}
+          // Sin bloquear mientras se guarda: se pueden encadenar gastos.
+          disabled={!parsed}
           className="size-11 shrink-0 rounded-2xl"
         >
-          {pending ? <Loader2 className="animate-spin" /> : <ArrowUp />}
+          <ArrowUp />
         </Button>
       </div>
     </form>

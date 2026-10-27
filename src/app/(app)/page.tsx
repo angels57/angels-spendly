@@ -4,8 +4,7 @@ import { connection } from "next/server";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BudgetProgress } from "@/components/budget-progress";
 import { MonthSummary } from "@/components/month-summary";
-import { QuickAdd } from "@/components/quick-add";
-import { TransactionList } from "@/components/transaction-list";
+import { DashboardFeed } from "@/components/dashboard-feed";
 import { getActiveList, getCategories, getTransactions } from "@/lib/data";
 import { budgetStatuses, spentByCategory } from "@/lib/budgets";
 import { startOfMonthISO } from "@/lib/dates";
@@ -43,28 +42,23 @@ async function Dashboard() {
         categories={categories}
         currency={list.currency}
       />
-      <TransactionList
-        transactions={recent}
+      <DashboardFeed
+        recent={recent}
+        more={
+          recent.length === RECENT_LIMIT && (
+            <Link
+              href="/transactions"
+              className="text-center text-sm font-semibold text-primary"
+            >
+              Ver todos los movimientos
+            </Link>
+          )
+        }
         categories={categories}
         currency={list.currency}
+        month={monthStart.slice(0, 7)}
+        spentThisMonth={spentByCategory(monthExpenses)}
       />
-      {recent.length === RECENT_LIMIT && (
-        <Link
-          href="/transactions"
-          className="text-center text-sm font-semibold text-primary"
-        >
-          Ver todos los movimientos
-        </Link>
-      )}
-
-      <div className="sticky bottom-0 mt-auto bg-gradient-to-t from-background via-background pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <QuickAdd
-          categories={categories}
-          currency={list.currency}
-          month={monthStart.slice(0, 7)}
-          spentThisMonth={spentByCategory(monthExpenses)}
-        />
-      </div>
     </>
   );
 }

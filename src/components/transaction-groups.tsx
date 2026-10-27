@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Repeat } from "lucide-react";
+import { Loader2, Repeat } from "lucide-react";
+import { cn } from "cn";
+import { SwipeRow } from "@/components/swipe-row";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -35,6 +37,8 @@ export function TransactionGroups({
   currency: CurrencyCode;
 }) {
   const [editing, setEditing] = useState<TransactionRow | null>(null);
+  // Solo una fila deslizada (abierta) a la vez.
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const close = () => setEditing(null);
 
   async function remove(transaction: TransactionRow) {
@@ -71,10 +75,24 @@ export function TransactionGroups({
             <ul className="flex flex-col">
               {group.items.map((t) => (
                 <li key={t.id}>
-                  <TransactionItem
-                    transaction={t}
-                    onSelect={() => setEditing(t)}
-                  />
+                  {t.pending ? (
+                    <TransactionItem transaction={t} />
+                  ) : (
+                    <SwipeRow
+                      open={swipedId === t.id}
+                      onOpenChange={(open) => setSwipedId(open ? t.id : null)}
+                      onEdit={() => {
+                        setSwipedId(null);
+                        setEditing(t);
+                      }}
+                      onDelete={() => remove(t)}
+                    >
+                      <TransactionItem
+                        transaction={t}
+                        onSelect={() => setEditing(t)}
+                      />
+                    </SwipeRow>
+                  )}
                 </li>
               ))}
             </ul>
@@ -89,7 +107,7 @@ export function TransactionGroups({
               Editar movimiento
             </DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="overflow-y-auto px-4 pt-4">
             {editing && (
               <TransactionForm
                 // Clave por id: al abrir otro movimiento el formulario se reinicia.
@@ -126,7 +144,8 @@ function TransactionItem({
   onSelect,
 }: {
   transaction: TransactionRow;
-  onSelect: () => void;
+  /** Sin él (movimiento aún guardándose) la fila no se puede tocar. */
+  onSelect?: () => void;
 }) {
   const income = t.category?.kind === "income";
   const title = t.note || t.category?.name || "Sin categoría";
@@ -139,7 +158,12 @@ function TransactionItem({
     <button
       type="button"
       onClick={onSelect}
-      className="flex w-full items-center gap-3 rounded-2xl px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+      disabled={!onSelect}
+      aria-busy={t.pending || undefined}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+        t.pending && "bg-primary/5 hover:bg-primary/5",
+      )}
     >
       <span
         className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
@@ -157,10 +181,17 @@ function TransactionItem({
             />
           )}
         </span>
-        {showCategory && (
-          <span className="text-xs text-muted-foreground">
-            {t.category?.name}
+        {t.pending ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="size-3 animate-spin" />
+            Guardando…
           </span>
+        ) : (
+          showCategory && (
+            <span className="text-xs text-muted-foreground">
+              {t.category?.name}
+            </span>
+          )
         )}
       </span>
       <span

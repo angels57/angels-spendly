@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { AmountInput } from "@/components/amount-input";
 import { EmojiPicker } from "@/components/emoji-picker";
+import { FormFooter } from "@/components/form-footer";
 import { KeywordsInput } from "@/components/keywords-input";
+import { SwipeRow } from "@/components/swipe-row";
 import {
   createCategory,
   deleteCategory,
+  restoreCategory,
   updateCategory,
 } from "@/app/(app)/categories/actions";
 import type { CategoryWithCount } from "@/lib/data";
@@ -40,6 +43,8 @@ export function CategoryManager({
   currency: CurrencyCode;
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
+  // Solo una fila deslizada (abierta) a la vez.
+  const [swipedId, setSwipedId] = useState<string | null>(null);
   const close = () => setEditing(null);
 
   const sections = [
@@ -69,31 +74,46 @@ export function CategoryManager({
               <ul>
                 {section.items.map((c) => (
                   <li key={c.id}>
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ mode: "edit", category: c })}
-                      className="flex w-full items-center gap-3 rounded-2xl px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                    <SwipeRow
+                      open={swipedId === c.id}
+                      onOpenChange={(open) => setSwipedId(open ? c.id : null)}
+                      onEdit={() => {
+                        setSwipedId(null);
+                        setEditing({ mode: "edit", category: c });
+                      }}
+                      onDelete={async () => {
+                        const error = await deleteWithUndo(c);
+                        if (error) toast.error(error);
+                      }}
                     >
-                      <span
-                        className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
-                        style={{ background: c.color }}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditing({ mode: "edit", category: c })
+                        }
+                        className="flex w-full items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                       >
-                        {c.emoji}
-                      </span>
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="font-semibold">{c.name}</span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {c.budgetCents !== null &&
-                            `${formatMoney(c.budgetCents, currency)} al mes · `}
-                          {c.keywords.length > 0
-                            ? c.keywords.join(", ")
-                            : "Sin palabras clave"}
+                        <span
+                          className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
+                          style={{ background: c.color }}
+                        >
+                          {c.emoji}
                         </span>
-                      </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {c.transactionCount} mov.
-                      </span>
-                    </button>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="font-semibold">{c.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {c.budgetCents !== null &&
+                              `${formatMoney(c.budgetCents, currency)} al mes · `}
+                            {c.keywords.length > 0
+                              ? c.keywords.join(", ")
+                              : "Sin palabras clave"}
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {c.transactionCount} mov.
+                        </span>
+                      </button>
+                    </SwipeRow>
                   </li>
                 ))}
               </ul>
@@ -110,7 +130,7 @@ export function CategoryManager({
                 : "Nueva categoría"}
             </DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="overflow-y-auto px-4 pt-4">
             {editing && (
               <CategoryForm
                 key={editing.mode === "edit" ? editing.category.id : "new"}
@@ -177,7 +197,6 @@ function CategoryForm({
     keywords,
     new Set(keywordOwners.keys()),
   );
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent) {
@@ -216,13 +235,9 @@ function CategoryForm({
   function remove() {
     if (!category) return;
     startTransition(async () => {
-      const result = await deleteCategory(category.id);
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      toast.success(`${category.emoji} ${category.name} eliminada`);
-      onDone();
+      const error = await deleteWithUndo(category);
+      if (error) setError(error);
+      else onDone();
     });
   }
 
@@ -284,7 +299,6 @@ function CategoryForm({
           onChange={(e) => setName(e.target.value)}
           maxLength={40}
           placeholder="Mascotas"
-          autoFocus={!category}
           className="h-11"
         />
       </label>
@@ -384,62 +398,39 @@ function CategoryForm({
         </p>
       )}
 
-      {confirmingDelete && category ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
-          <p className="text-sm">
-            ¿Eliminar <strong>{category.name}</strong>?
-            {category.transactionCount === 1 &&
-              " Su movimiento quedará sin categoría."}
-            {category.transactionCount > 1 &&
-              ` Sus ${category.transactionCount} movimientos quedarán sin categoría.`}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 flex-1"
-              onClick={() => setConfirmingDelete(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              className="h-10 flex-1"
-              disabled={pending}
-              onClick={remove}
-            >
-              {pending && <Loader2 className="animate-spin" />}
-              Eliminar
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          {category && (
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              aria-label="Eliminar categoría"
-              disabled={pending}
-              onClick={() => setConfirmingDelete(true)}
-              className="size-11 text-destructive"
-            >
-              <Trash2 />
-            </Button>
-          )}
-          <Button
-            type="submit"
-            size="lg"
-            disabled={pending}
-            className="h-11 flex-1"
-          >
-            {pending && <Loader2 className="animate-spin" />}
-            {category ? "Guardar cambios" : "Crear categoría"}
-          </Button>
-        </div>
-      )}
+      <FormFooter
+        submitLabel={category ? "Guardar cambios" : "Crear categoría"}
+        pending={pending}
+        deleteLabel="Eliminar categoría"
+        onDelete={category ? remove : undefined}
+      />
     </form>
   );
+}
+
+/**
+ * Borra la categoría y ofrece deshacer (vuelve con su presupuesto y sus
+ * movimientos). Devuelve el mensaje de error, o null si se borró.
+ */
+async function deleteWithUndo(
+  category: CategoryWithCount,
+): Promise<string | null> {
+  const result = await deleteCategory(category.id);
+  if (!result.ok) return result.message;
+  const { transactionCount: count } = category;
+  toast(`${category.emoji} ${category.name} eliminada`, {
+    description:
+      count > 0
+        ? `${count} ${count === 1 ? "movimiento quedó" : "movimientos quedaron"} sin categoría.`
+        : undefined,
+    duration: 8000,
+    action: {
+      label: "Deshacer",
+      onClick: async () => {
+        const restored = await restoreCategory(result.data);
+        if (!restored.ok) toast.error(restored.message);
+      },
+    },
+  });
+  return null;
 }

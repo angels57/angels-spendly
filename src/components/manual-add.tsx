@@ -42,7 +42,7 @@ export function ManualAdd({
               Nuevo movimiento
             </DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="overflow-y-auto px-4 pt-4">
             {open && (
               <TransactionForm
                 categories={categories}

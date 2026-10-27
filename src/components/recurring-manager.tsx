@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Plus, Repeat, Trash2, X } from "lucide-react";
+import { Plus, Repeat, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { AmountInput } from "@/components/amount-input";
+import { FormFooter } from "@/components/form-footer";
 import { selectClassName } from "@/components/transaction-form";
 import {
   createRecurring,
   deleteRecurring,
+  restoreRecurring,
   updateRecurring,
 } from "@/app/(app)/recurring/actions";
 import type { Category, RecurringRow } from "@/lib/data";
@@ -127,7 +129,7 @@ export function RecurringManager({
                 : "Nuevo recurrente"}
             </DrawerTitle>
           </DrawerHeader>
-          <div className="overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="overflow-y-auto px-4 pt-4">
             {editing && (
               <RecurringForm
                 key={editing.mode === "edit" ? editing.rule.id : "new"}
@@ -169,7 +171,6 @@ function RecurringForm({
   );
   const [endDate, setEndDate] = useState(rule?.endDate ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent) {
@@ -220,8 +221,18 @@ function RecurringForm({
         setError(result.message);
         return;
       }
-      toast.success(`${rule.note} eliminado`);
       onDone();
+      toast(`${rule.note} eliminado`, {
+        description: "Los movimientos ya creados se conservan.",
+        duration: 8000,
+        action: {
+          label: "Deshacer",
+          onClick: async () => {
+            const restored = await restoreRecurring(result.data);
+            if (!restored.ok) toast.error(restored.message);
+          },
+        },
+      });
     });
   }
 
@@ -234,7 +245,6 @@ function RecurringForm({
           onChange={(e) => setNote(e.target.value)}
           maxLength={200}
           placeholder="Alquiler, Netflix, Sueldo…"
-          autoFocus={!rule}
           className="h-11"
         />
       </label>
@@ -346,59 +356,12 @@ function RecurringForm({
         </p>
       )}
 
-      {confirmingDelete && rule ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3">
-          <p className="text-sm">
-            ¿Eliminar <strong>{rule.note}</strong>? Los movimientos ya creados
-            se conservan.
-          </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 flex-1"
-              onClick={() => setConfirmingDelete(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              className="h-10 flex-1"
-              disabled={pending}
-              onClick={remove}
-            >
-              {pending && <Loader2 className="animate-spin" />}
-              Eliminar
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          {rule && (
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              aria-label="Eliminar recurrente"
-              disabled={pending}
-              onClick={() => setConfirmingDelete(true)}
-              className="h-11 text-destructive"
-            >
-              <Trash2 />
-            </Button>
-          )}
-          <Button
-            type="submit"
-            size="lg"
-            disabled={pending}
-            className="h-11 flex-1"
-          >
-            {pending && <Loader2 className="animate-spin" />}
-            {rule ? "Guardar cambios" : "Crear recurrente"}
-          </Button>
-        </div>
-      )}
+      <FormFooter
+        submitLabel={rule ? "Guardar cambios" : "Crear recurrente"}
+        pending={pending}
+        deleteLabel="Eliminar recurrente"
+        onDelete={rule ? remove : undefined}
+      />
     </form>
   );
 }
