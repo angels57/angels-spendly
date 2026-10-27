@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AmountInput } from "@/components/amount-input";
+import { FormFooter } from "@/components/form-footer";
 import { CurrencySelect } from "@/components/currency-select";
 import type { Category } from "@/lib/data";
 import { formatAmountInput, type CurrencyCode } from "@/lib/money";
@@ -143,30 +142,12 @@ export function TransactionForm({
         </p>
       )}
 
-      <div className="flex gap-2">
-        {onDelete && (
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            aria-label="Borrar movimiento"
-            disabled={deleting || pending}
-            onClick={() => startDelete(onDelete)}
-            className="size-11 text-destructive"
-          >
-            {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-          </Button>
-        )}
-        <Button
-          type="submit"
-          size="lg"
-          disabled={pending || deleting}
-          className="h-11 flex-1"
-        >
-          {pending && <Loader2 className="animate-spin" />}
-          {initial ? "Guardar cambios" : "Añadir"}
-        </Button>
-      </div>
+      <FormFooter
+        submitLabel={initial ? "Guardar cambios" : "Añadir"}
+        pending={pending || deleting}
+        deleteLabel="Eliminar movimiento"
+        onDelete={onDelete && (() => startDelete(onDelete))}
+      />
     </form>
   );
 }

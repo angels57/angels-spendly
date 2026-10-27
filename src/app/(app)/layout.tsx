@@ -1,11 +1,9 @@
 import { Suspense } from "react";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { Settings } from "lucide-react";
 import { AppNav } from "@/components/app-nav";
 import { InstallPrompt } from "@/components/pwa";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { signOut } from "@/app/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -35,18 +33,14 @@ async function AppHeader() {
         <h1 className="text-xl font-extrabold tracking-tight">{list.name}</h1>
         <p className="truncate text-sm text-muted-foreground">{user.email}</p>
       </div>
-      <ThemeToggle />
-      <form action={signOut}>
-        <Button
-          type="submit"
-          variant="ghost"
-          size="icon"
-          aria-label="Cerrar sesión"
-          className="size-11"
-        >
-          <LogOut />
-        </Button>
-      </form>
+      {/* Tema, moneda, exportar y cerrar sesión viven en Ajustes. */}
+      <Link
+        href="/settings"
+        aria-label="Ajustes"
+        className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <Settings className="size-5" />
+      </Link>
     </header>
   );
 }

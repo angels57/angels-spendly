@@ -41,6 +41,8 @@ export type TransactionRow = {
   category: Pick<Category, "name" | "emoji" | "color" | "kind"> | null;
   /** Generado por un movimiento recurrente. */
   recurring: boolean;
+  /** Recién escrito en el quick add, aún sin confirmar (optimista). */
+  pending?: boolean;
 };
 
 export type RecurringRow = {
