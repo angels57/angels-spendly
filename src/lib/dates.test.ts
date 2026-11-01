@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   addMonths,
   dayLabel,
+  homeMonth,
   isValidTimeZone,
   nowInTimeZone,
   monthParam,
   monthRange,
   parseMonthParam,
+  shortMonthTitle,
 } from "./dates";
 
 const NOW = new Date(2026, 9, 25, 12);
@@ -31,6 +33,21 @@ describe("nowInTimeZone", () => {
   it("valida la zona horaria", () => {
     expect(isValidTimeZone("America/Mexico_City")).toBe(true);
     expect(isValidTimeZone("Marte/Olympus")).toBe(false);
+  });
+});
+
+describe("homeMonth", () => {
+  it("usa el mes pedido, sin pasar del actual", () => {
+    expect(monthParam(homeMonth("2026-08", NOW))).toBe("2026-08");
+    expect(monthParam(homeMonth("2026-12", NOW))).toBe("2026-10");
+    expect(monthParam(homeMonth(undefined, NOW))).toBe("2026-10");
+  });
+
+  it("pone el año solo si no es el actual", () => {
+    expect(shortMonthTitle(new Date(2026, 8, 1), NOW)).toBe("septiembre");
+    expect(shortMonthTitle(new Date(2025, 11, 1), NOW)).toBe(
+      "diciembre de 2025",
+    );
   });
 });
 

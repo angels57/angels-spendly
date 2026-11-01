@@ -116,6 +116,12 @@ export type CurrencyTotals = {
  * Gastado e ingresado por moneda. Sin tipos de cambio no se pueden sumar
  * monedas distintas: la principal va primero y el resto, por gasto.
  */
+/** Cambio en % de previous a current, redondeado; null sin base (0). */
+export function percentChange(current: number, previous: number) {
+  if (previous <= 0) return null;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
 export function totalsByCurrency(
   transactions: {
     amountCents: number;

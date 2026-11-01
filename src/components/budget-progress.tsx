@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { Category } from "@/lib/data";
 import type { BudgetStatus } from "@/lib/budgets";
 import { formatMoney } from "@/lib/money";
@@ -8,11 +14,16 @@ export function BudgetProgress({
   statuses,
   categories,
   currency,
+  pastMonth,
 }: {
   statuses: BudgetStatus[];
   categories: Category[];
   currency: string;
+  /** "octubre" si se muestra un mes pasado. */
+  pastMonth?: string;
 }) {
+  // En un mes pasado no se invita a crear presupuestos.
+  if (statuses.length === 0 && pastMonth) return null;
   if (statuses.length === 0) {
     return (
       <Link
@@ -31,6 +42,12 @@ export function BudgetProgress({
     <Card>
       <CardHeader>
         <CardTitle>Presupuestos</CardTitle>
+        {/* Los presupuestos no guardan historial: se usa el de hoy. */}
+        {pastMonth && (
+          <CardDescription className="first-letter:uppercase">
+            {pastMonth}, con tu presupuesto actual
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col gap-4">

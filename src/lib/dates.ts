@@ -87,6 +87,20 @@ export function monthParam(month: Date) {
   return toISODate(month).slice(0, 7);
 }
 
+/** Mes del inicio: el de ?month=, sin pasar del actual (no hay futuros). */
+export function homeMonth(param: unknown, now = new Date()) {
+  const current = parseMonthParam(undefined, now);
+  const requested = parseMonthParam(param, now);
+  return requested > current ? current : requested;
+}
+
+/** "octubre" en el año actual, "diciembre de 2025" en otro. */
+export function shortMonthTitle(month: Date, now = new Date()) {
+  return month.getFullYear() === now.getFullYear()
+    ? monthLabel(month)
+    : monthTitle(month);
+}
+
 export function addMonths(month: Date, delta: number) {
   return new Date(month.getFullYear(), month.getMonth() + delta, 1);
 }

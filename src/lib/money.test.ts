@@ -4,6 +4,7 @@ import {
   formatAmountTyping,
   formatMoney,
   fromCents,
+  percentChange,
   toCents,
   totalsByCurrency,
 } from "./money";
@@ -76,5 +77,14 @@ describe("totalsByCurrency", () => {
       { currency: "USD", spentCents: 2000, incomeCents: 100 },
       { currency: "EUR", spentCents: 500, incomeCents: 0 },
     ]);
+  });
+});
+
+describe("percentChange", () => {
+  it("redondea el cambio y no divide por cero", () => {
+    expect(percentChange(92, 100)).toBe(-8);
+    expect(percentChange(150, 100)).toBe(50);
+    expect(percentChange(100, 100)).toBe(0);
+    expect(percentChange(100, 0)).toBeNull();
   });
 });
