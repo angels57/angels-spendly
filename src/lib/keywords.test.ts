@@ -3,7 +3,7 @@ import { normalizeKeyword, parseKeywords, suggestKeywords } from "./keywords";
 
 describe("suggestKeywords", () => {
   it("sugiere según el nombre", () => {
-    expect(suggestKeywords("Transporte", [])).toEqual([
+    expect(suggestKeywords("Transporte", [], "es")).toEqual([
       "uber",
       "didi",
       "taxi",
@@ -16,14 +16,15 @@ describe("suggestKeywords", () => {
   });
 
   it("entiende plurales y tildes", () => {
-    expect(suggestKeywords("Mascotas", [])).toContain("veterinario");
-    expect(suggestKeywords("Educación", [])).toContain("matricula");
+    expect(suggestKeywords("Mascotas", [], "es")).toContain("veterinario");
+    expect(suggestKeywords("Educación", [], "es")).toContain("matricula");
   });
 
   it("no repite las que ya tiene ni las de otras categorías", () => {
     const result = suggestKeywords(
       "Transporte",
       ["Uber", "taxi"],
+      "es",
       new Set(["didi"]),
     );
     expect(result).not.toContain("uber");
@@ -33,8 +34,28 @@ describe("suggestKeywords", () => {
   });
 
   it("sin tema conocido no sugiere nada", () => {
-    expect(suggestKeywords("Varios", [])).toEqual([]);
-    expect(suggestKeywords("", [])).toEqual([]);
+    expect(suggestKeywords("Varios", [], "es")).toEqual([]);
+    expect(suggestKeywords("", [], "es")).toEqual([]);
+  });
+});
+
+describe("suggestKeywords en inglés", () => {
+  it("reconoce nombres en inglés y sugiere en inglés", () => {
+    expect(suggestKeywords("Transport", [], "en")).toEqual([
+      "uber",
+      "lyft",
+      "taxi",
+      "bus",
+      "subway",
+      "train",
+      "gas",
+      "fuel",
+    ]);
+    expect(suggestKeywords("Pets", [], "en")).toContain("vet");
+  });
+
+  it("un nombre en español con la app en inglés sugiere en inglés", () => {
+    expect(suggestKeywords("Mascotas", [], "en")).toContain("vet");
   });
 });
 

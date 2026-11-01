@@ -187,6 +187,15 @@ export const en = {
       `“${word}” is already in ${category}: quick add will pick whichever it finds first.`,
   },
   emoji: {
+    groups: {
+      food: "Food",
+      transport: "Transport",
+      home: "Home",
+      shopping: "Shopping",
+      fun: "Fun",
+      health: "Health & care",
+      money: "Money & work",
+    },
     suggested: "Suggested:",
     themes: "Themes",
     other: "Another one? Type or paste it",

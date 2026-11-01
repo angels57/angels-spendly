@@ -73,7 +73,7 @@ export function EmojiPicker({
       >
         {EMOJI_GROUPS.map((g, i) => (
           <button
-            key={g.label}
+            key={g.id}
             type="button"
             role="tab"
             aria-selected={i === groupIndex}
@@ -86,14 +86,14 @@ export function EmojiPicker({
             )}
           >
             <span aria-hidden>{g.emojis[0]}</span>
-            {g.label}
+            {t.emoji.groups[g.id]}
           </button>
         ))}
       </div>
 
       <div
         role="tabpanel"
-        aria-label={group.label}
+        aria-label={t.emoji.groups[group.id]}
         className="grid grid-cols-7 gap-1"
       >
         {group.emojis.map((emoji) => (

@@ -80,7 +80,11 @@ export async function sendMagicLink(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
-    options: { emailRedirectTo: await callbackUrl() },
+    // Si el correo es nuevo, crea la cuenta: con el idioma de la app.
+    options: {
+      emailRedirectTo: await callbackUrl(),
+      data: { locale: await getRequestLocale() },
+    },
   });
 
   if (error) return authError(error, "link_send_failed");
@@ -116,7 +120,11 @@ export async function signUp(
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     ...parsed.data,
-    options: { emailRedirectTo: await callbackUrl() },
+    // El trigger handle_new_user crea el perfil y las categorías en este idioma.
+    options: {
+      emailRedirectTo: await callbackUrl(),
+      data: { locale: await getRequestLocale() },
+    },
   });
   if (error) return authError(error, "sign_up_failed");
 

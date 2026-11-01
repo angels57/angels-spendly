@@ -188,6 +188,15 @@ export const es: Dictionary = {
       `«${word}» ya está en ${category}: el quick add elegirá la que encuentre primero.`,
   },
   emoji: {
+    groups: {
+      food: "Comida",
+      transport: "Transporte",
+      home: "Hogar",
+      shopping: "Compras",
+      fun: "Ocio",
+      health: "Salud y cuidado",
+      money: "Dinero y trabajo",
+    },
     suggested: "Sugerido:",
     themes: "Temas",
     other: "¿Otro? Escríbelo o pégalo",

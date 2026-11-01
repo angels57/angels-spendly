@@ -210,6 +210,7 @@ function CategoryForm({
   const keywordSuggestions = suggestKeywords(
     name,
     keywords,
+    locale,
     new Set(keywordOwners.keys()),
   );
   const [pending, startTransition] = useTransition();
