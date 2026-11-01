@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { Check, Monitor, Moon, Share, Sun } from "lucide-react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Check, Loader2, Monitor, Moon, Share, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/i18n/provider";
+import { useLocale, useT } from "@/i18n/provider";
+import { setLocale } from "@/app/[lang]/(app)/actions";
+import {
+  LOCALE_NAMES,
+  LOCALES,
+  localizePath,
+  splitLocale,
+  type Locale,
+} from "@/i18n/config";
 
 const THEMES = [
   { value: "light", icon: Sun },
@@ -136,5 +151,57 @@ export function InstallRow() {
         t.install.otherBrowsers
       )}
     </p>
+  );
+}
+
+/** English / Español: lo guarda en la cuenta y abre la misma página en ese idioma. */
+export function LanguageSelect() {
+  const t = useT();
+  const current = useLocale();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  function choose(locale: Locale) {
+    if (locale === current || pending) return;
+    startTransition(async () => {
+      const result = await setLocale(locale);
+      if (!result.ok) {
+        toast.error(t.errors[result.error]);
+        return;
+      }
+      router.replace(localizePath(locale, splitLocale(pathname).path));
+    });
+  }
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label={t.settings.language}
+      className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1"
+    >
+      {LOCALES.map((locale) => (
+        <button
+          key={locale}
+          type="button"
+          role="radio"
+          lang={locale}
+          aria-checked={current === locale}
+          disabled={pending}
+          onClick={() => choose(locale)}
+          className={cn(
+            "flex h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition-colors",
+            current === locale
+              ? "bg-background shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {pending && current !== locale && (
+            <Loader2 className="size-4 animate-spin" />
+          )}
+          {LOCALE_NAMES[locale]}
+        </button>
+      ))}
+    </div>
   );
 }

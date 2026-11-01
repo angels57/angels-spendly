@@ -5,7 +5,7 @@ import { ChevronRight, Download, LogOut, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CurrencySettings } from "@/components/currency-settings";
-import { InstallRow, ThemeSelect } from "@/components/settings";
+import { InstallRow, LanguageSelect, ThemeSelect } from "@/components/settings";
 import { signOut } from "@/app/[lang]/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 import { APP_SHORT_NAME } from "@/lib/brand";
@@ -54,6 +54,10 @@ async function Settings() {
             key={list.currency}
             currency={list.currency}
           />
+        </div>
+        <div className="flex flex-col gap-2 p-4">
+          <span className="text-sm font-semibold">{t.settings.language}</span>
+          <LanguageSelect />
         </div>
         <div className="flex flex-col gap-2 p-4">
           <span className="text-sm font-semibold">{t.settings.theme}</span>

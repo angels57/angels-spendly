@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,
+  LOCALE_COOKIE_OPTIONS,
   hasLocale,
   localizePath,
   matchAcceptLanguage,
@@ -44,11 +45,7 @@ function preferredLocale(request: NextRequest): Locale {
 }
 
 function rememberLocale(response: NextResponse, locale: Locale) {
-  response.cookies.set(LOCALE_COOKIE, locale, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
+  response.cookies.set(LOCALE_COOKIE, locale, LOCALE_COOKIE_OPTIONS);
   return response;
 }
 

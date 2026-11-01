@@ -4,14 +4,29 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
-import { localizePath } from "@/i18n/config";
+import { hasLocale, localizePath } from "@/i18n/config";
 import type { ErrorCode } from "@/i18n/errors";
-import { getRequestLocale } from "@/i18n/request";
+import { getRequestLocale, setLocaleCookie } from "@/i18n/request";
 import { createClient } from "@/lib/supabase/server";
 
 /** Ruta en el idioma que se está viendo (las acciones no tienen root params). */
 async function localized(path: string) {
   return localizePath(await getRequestLocale(), path);
+}
+
+/**
+ * Tras entrar: el idioma guardado en la cuenta manda sobre el de la URL y
+ * el del navegador (se eligió en Ajustes, quizá en otro dispositivo).
+ */
+async function homeInAccountLocale(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
+  const { data } = await supabase.from("profiles").select("locale").single();
+  const locale = hasLocale(data?.locale)
+    ? data.locale
+    : await getRequestLocale();
+  await setLocaleCookie(locale);
+  return localizePath(locale, "/");
 }
 
 type ErrorState = { status: "error"; error: ErrorCode };
@@ -103,7 +118,7 @@ export async function signInWithPassword(
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return authError(error, "sign_in_failed");
-  redirect(await localized("/"));
+  redirect(await homeInAccountLocale(supabase));
 }
 
 export async function signUp(
@@ -129,7 +144,7 @@ export async function signUp(
   if (error) return authError(error, "sign_up_failed");
 
   // Sin confirmación por correo (lo configurado): sesión al momento.
-  if (data.session) redirect(await localized("/"));
+  if (data.session) redirect(await homeInAccountLocale(supabase));
   // Solo si se activa "Confirm email" en Supabase: toca revisar el correo.
   return { status: "sent", email: parsed.data.email, reason: "signup" };
 }
@@ -164,7 +179,7 @@ export async function updatePassword(
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password: password.data });
   if (error) return authError(error, "password_save_failed");
-  redirect(await localized("/"));
+  redirect(await homeInAccountLocale(supabase));
 }
 
 export async function signOut() {

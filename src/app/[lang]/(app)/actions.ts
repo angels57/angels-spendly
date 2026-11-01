@@ -10,6 +10,8 @@ import {
   type TransactionInput,
 } from "@/lib/schemas";
 import type { ErrorCode } from "@/i18n/errors";
+import { hasLocale } from "@/i18n/config";
+import { setLocaleCookie } from "@/i18n/request";
 import { createClient } from "@/lib/supabase/server";
 
 // Las Server Actions se pueden llamar con un POST directo: siempre validar
@@ -176,5 +178,27 @@ export async function setListCurrency(currency: string): Promise<Result> {
   }
 
   refresh();
+  return { ok: true };
+}
+
+/**
+ * Idioma de la cuenta. Se guarda en el perfil (manda al iniciar sesión, en
+ * cualquier dispositivo), en los metadatos de Auth (las plantillas de correo
+ * de Supabase solo ven esos) y en la cookie (para lo que queda de sesión).
+ * Quien llama navega luego a la misma página con el nuevo prefijo.
+ */
+export async function setLocale(locale: string): Promise<Result> {
+  const user = await getCurrentUser();
+  if (!hasLocale(locale)) return { ok: false, error: "check_data" };
+
+  const supabase = await createClient();
+  const [profile, auth] = await Promise.all([
+    supabase.from("profiles").update({ locale }).eq("id", user.id).select("id"),
+    supabase.auth.updateUser({ data: { locale } }),
+  ]);
+  await setLocaleCookie(locale);
+  if (profile.error || profile.data.length === 0 || auth.error) {
+    return { ok: false, error: "save_failed" };
+  }
   return { ok: true };
 }

@@ -244,6 +244,20 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Plantillas bilingües (inglés / español según .Data.locale de la cuenta).
+# El asunto no admite condiciones: va en los dos idiomas.
+[auth.email.template.magic_link]
+subject = "Your sign-in link · Tu enlace para entrar"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.recovery]
+subject = "Reset your password · Cambia tu contraseña"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your email · Confirma tu correo"
+content_path = "./supabase/templates/confirmation.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

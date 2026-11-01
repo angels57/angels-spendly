@@ -100,6 +100,7 @@ export const es: Dictionary = {
     retry: "Reintentar",
   },
   settings: {
+    language: "Idioma",
     account: "Cuenta",
     list: (name: string) => `Lista «${name}»`,
     preferences: "Preferencias",

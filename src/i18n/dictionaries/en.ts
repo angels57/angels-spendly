@@ -99,6 +99,7 @@ export const en = {
     retry: "Try again",
   },
   settings: {
+    language: "Language",
     account: "Account",
     list: (name: string) => `List “${name}”`,
     preferences: "Preferences",

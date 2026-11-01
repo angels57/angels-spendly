@@ -6,7 +6,18 @@ export const LOCALES = ["en", "es"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
+
+/** Cada idioma escrito en sí mismo: igual en cualquier idioma de la interfaz. */
+export const LOCALE_NAMES: Record<Locale, string> = {
+  en: "English",
+  es: "Español",
+};
 export const LOCALE_COOKIE = "NEXT_LOCALE";
+export const LOCALE_COOKIE_OPTIONS = {
+  path: "/",
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: "lax",
+} as const;
 
 export function hasLocale(value: string | null | undefined): value is Locale {
   return (LOCALES as readonly string[]).includes(value ?? "");

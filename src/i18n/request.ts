@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE,
+  LOCALE_COOKIE_OPTIONS,
   hasLocale,
   type Locale,
 } from "@/i18n/config";
@@ -14,4 +15,9 @@ import {
 export async function getRequestLocale(): Promise<Locale> {
   const value = (await cookies()).get(LOCALE_COOKIE)?.value;
   return hasLocale(value) ? value : DEFAULT_LOCALE;
+}
+
+/** Recuerda el idioma en la cookie (Server Actions y Route Handlers). */
+export async function setLocaleCookie(locale: Locale) {
+  (await cookies()).set(LOCALE_COOKIE, locale, LOCALE_COOKIE_OPTIONS);
 }
