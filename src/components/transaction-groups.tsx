@@ -20,6 +20,7 @@ import {
 import type { Category, TransactionRow } from "@/lib/data";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
+import { useT } from "@/i18n/provider";
 
 export type TransactionGroup = {
   day: string;
@@ -36,6 +37,7 @@ export function TransactionGroups({
   categories: Category[];
   currency: CurrencyCode;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState<TransactionRow | null>(null);
   // Solo una fila deslizada (abierta) a la vez.
   const [swipedId, setSwipedId] = useState<string | null>(null);
@@ -44,20 +46,22 @@ export function TransactionGroups({
   async function remove(transaction: TransactionRow) {
     const result = await deleteTransaction(transaction.id);
     if (!result.ok) {
-      toast.error(result.message);
+      toast.error(t.errors[result.error]);
       return;
     }
     close();
     toast(
-      `${formatMoney(transaction.amountCents, transaction.currency)} borrado`,
+      t.transactionForm.deleted(
+        formatMoney(transaction.amountCents, transaction.currency),
+      ),
       {
         // Más que los 4 s por defecto: da tiempo a pulsar "Deshacer".
         duration: 8000,
         action: {
-          label: "Deshacer",
+          label: t.common.undo,
           onClick: async () => {
             const restored = await restoreTransaction(result.data);
-            if (!restored.ok) toast.error(restored.message);
+            if (!restored.ok) toast.error(t.errors[restored.error]);
           },
         },
       },
@@ -104,7 +108,7 @@ export function TransactionGroups({
         <DrawerContent className="mx-auto max-w-md">
           <DrawerHeader>
             <DrawerTitle className="text-lg font-bold">
-              Editar movimiento
+              {t.transactionForm.editTitle}
             </DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pt-4">
@@ -125,7 +129,7 @@ export function TransactionGroups({
                   const result = await updateTransaction(editing.id, input);
                   if (result.ok) {
                     close();
-                    toast.success("Cambios guardados");
+                    toast.success(t.common.changesSaved);
                   }
                   return result;
                 }}
@@ -140,56 +144,57 @@ export function TransactionGroups({
 }
 
 function TransactionItem({
-  transaction: t,
+  transaction: tx,
   onSelect,
 }: {
   transaction: TransactionRow;
   /** Sin él (movimiento aún guardándose) la fila no se puede tocar. */
   onSelect?: () => void;
 }) {
-  const income = t.category?.kind === "income";
-  const title = t.note || t.category?.name || "Sin categoría";
+  const t = useT();
+  const income = tx.category?.kind === "income";
+  const title = tx.note || tx.category?.name || t.common.uncategorized;
   const showCategory =
-    t.note &&
-    t.category &&
-    t.note.toLocaleLowerCase() !== t.category.name.toLocaleLowerCase();
+    tx.note &&
+    tx.category &&
+    tx.note.toLocaleLowerCase() !== tx.category.name.toLocaleLowerCase();
 
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={!onSelect}
-      aria-busy={t.pending || undefined}
+      aria-busy={tx.pending || undefined}
       className={cn(
         "flex w-full items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-        t.pending && "bg-primary/5 hover:bg-primary/5",
+        tx.pending && "bg-primary/5 hover:bg-primary/5",
       )}
     >
       <span
         className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
-        style={{ background: t.category?.color ?? NO_CATEGORY_COLOR }}
+        style={{ background: tx.category?.color ?? NO_CATEGORY_COLOR }}
       >
-        {t.category?.emoji ?? "💸"}
+        {tx.category?.emoji ?? "💸"}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-center gap-1 truncate font-semibold">
           <span className="truncate">{title}</span>
-          {t.recurring && (
+          {tx.recurring && (
             <Repeat
-              aria-label="Recurrente"
+              aria-label={t.transactionForm.recurring}
               className="size-3.5 shrink-0 text-muted-foreground"
             />
           )}
         </span>
-        {t.pending ? (
+        {tx.pending ? (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="size-3 animate-spin" />
-            Guardando…
+            {t.transactionForm.saving}
           </span>
         ) : (
           showCategory && (
             <span className="text-xs text-muted-foreground">
-              {t.category?.name}
+              {tx.category?.name}
             </span>
           )
         )}
@@ -198,7 +203,7 @@ function TransactionItem({
         className={`font-bold tabular-nums ${income ? "text-emerald-600" : ""}`}
       >
         {income ? "+" : "−"}
-        {formatMoney(t.amountCents, t.currency)}
+        {formatMoney(tx.amountCents, tx.currency)}
       </span>
     </button>
   );

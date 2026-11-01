@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, TriangleAlert, X } from "lucide-react";
 import { cn } from "cn";
 import { normalizeKeyword, parseKeywords } from "@/lib/keywords";
+import { useT } from "@/i18n/provider";
 
 const MAX_KEYWORDS = 50;
 
@@ -24,6 +25,7 @@ export function KeywordsInput({
   /** Palabra normalizada → categoría que ya la usa ("🚗 Transporte"). */
   usedBy: ReadonlyMap<string, string>;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState("");
 
   function add(words: string[]) {
@@ -56,7 +58,7 @@ export function KeywordsInput({
             <button
               key={keyword}
               type="button"
-              aria-label={`Quitar ${keyword}`}
+              aria-label={t.keywords.remove(keyword)}
               onClick={() => onChange(value.filter((k) => k !== keyword))}
               className={cn(
                 "flex h-9 items-center gap-1 rounded-full pr-2 pl-3 text-sm font-semibold transition-colors",
@@ -93,7 +95,9 @@ export function KeywordsInput({
           enterKeyHint="done"
           autoCapitalize="none"
           autoComplete="off"
-          placeholder={value.length ? "Añadir otra…" : "veterinario, croquetas"}
+          placeholder={
+            value.length ? t.keywords.addAnother : t.keywords.placeholder
+          }
           className="h-9 min-w-28 flex-1 bg-transparent px-1.5 text-base outline-none placeholder:text-muted-foreground"
         />
       </div>
@@ -101,22 +105,21 @@ export function KeywordsInput({
       {conflicts.length > 0 && (
         <ul className="flex flex-col gap-0.5 text-xs text-amber-700 dark:text-amber-300">
           {conflicts.map(([keyword, category]) => (
-            <li key={keyword}>
-              «{keyword}» ya está en {category}: el quick add elegirá la que
-              encuentre primero.
-            </li>
+            <li key={keyword}>{t.keywords.duplicate(keyword, category)}</li>
           ))}
         </ul>
       )}
 
       {suggestions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Sugerencias:</span>
+          <span className="text-xs text-muted-foreground">
+            {t.keywords.suggestions}
+          </span>
           {suggestions.map((keyword) => (
             <button
               key={keyword}
               type="button"
-              aria-label={`Añadir ${keyword}`}
+              aria-label={t.keywords.add(keyword)}
               onClick={() => add([keyword])}
               className="flex h-9 items-center gap-0.5 rounded-full border border-dashed pr-3 pl-2 text-sm text-muted-foreground transition-colors hover:border-solid hover:text-foreground"
             >

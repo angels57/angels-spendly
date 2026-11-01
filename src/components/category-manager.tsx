@@ -32,6 +32,9 @@ import {
   categoryInputSchema,
   type CategoryInput,
 } from "@/lib/schemas";
+import { useT } from "@/i18n/provider";
+import { toErrorCode } from "@/i18n/errors";
+import type { Dictionary } from "@/i18n/dictionaries";
 
 type Editing = { mode: "new" } | { mode: "edit"; category: CategoryWithCount };
 
@@ -42,14 +45,21 @@ export function CategoryManager({
   categories: CategoryWithCount[];
   currency: CurrencyCode;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState<Editing | null>(null);
   // Solo una fila deslizada (abierta) a la vez.
   const [swipedId, setSwipedId] = useState<string | null>(null);
   const close = () => setEditing(null);
 
   const sections = [
-    { title: "Gastos", items: categories.filter((c) => c.kind === "expense") },
-    { title: "Ingresos", items: categories.filter((c) => c.kind === "income") },
+    {
+      title: t.common.expenses,
+      items: categories.filter((c) => c.kind === "expense"),
+    },
+    {
+      title: t.common.incomes,
+      items: categories.filter((c) => c.kind === "income"),
+    },
   ];
 
   return (
@@ -61,7 +71,7 @@ export function CategoryManager({
         onClick={() => setEditing({ mode: "new" })}
       >
         <Plus />
-        Nueva categoría
+        {t.categories.newButton}
       </Button>
 
       {sections.map(
@@ -82,7 +92,7 @@ export function CategoryManager({
                         setEditing({ mode: "edit", category: c });
                       }}
                       onDelete={async () => {
-                        const error = await deleteWithUndo(c);
+                        const error = await deleteWithUndo(c, t);
                         if (error) toast.error(error);
                       }}
                     >
@@ -103,14 +113,16 @@ export function CategoryManager({
                           <span className="font-semibold">{c.name}</span>
                           <span className="truncate text-xs text-muted-foreground">
                             {c.budgetCents !== null &&
-                              `${formatMoney(c.budgetCents, currency)} al mes · `}
+                              t.categories.perMonth(
+                                formatMoney(c.budgetCents, currency),
+                              )}
                             {c.keywords.length > 0
                               ? c.keywords.join(", ")
-                              : "Sin palabras clave"}
+                              : t.categories.noKeywords}
                           </span>
                         </span>
                         <span className="text-xs text-muted-foreground tabular-nums">
-                          {c.transactionCount} mov.
+                          {t.categories.transactionCount(c.transactionCount)}
                         </span>
                       </button>
                     </SwipeRow>
@@ -126,8 +138,8 @@ export function CategoryManager({
           <DrawerHeader>
             <DrawerTitle className="text-lg font-bold">
               {editing?.mode === "edit"
-                ? "Editar categoría"
-                : "Nueva categoría"}
+                ? t.categories.editTitle
+                : t.categories.newTitle}
             </DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pt-4">
@@ -163,6 +175,7 @@ function CategoryForm({
   onDone: () => void;
 }) {
   // Vacío = aún no elegido: se usa el sugerido por el nombre.
+  const t = useT();
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [name, setName] = useState(category?.name ?? "");
@@ -203,7 +216,7 @@ function CategoryForm({
     event.preventDefault();
     const budgetCents = budget.trim() ? parseAmount(budget) : null;
     if (budget.trim() && budgetCents === null) {
-      setError("El presupuesto debe ser un monto, por ejemplo 200.");
+      setError(t.categories.invalidBudget);
       return;
     }
     const parsed = categoryInputSchema.safeParse({
@@ -215,7 +228,7 @@ function CategoryForm({
       keywords: keywords.map((k) => k.trim().toLowerCase()),
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Revisa los datos.");
+      setError(t.errors[toErrorCode(parsed.error.issues[0]?.message)]);
       return;
     }
     setError(null);
@@ -224,10 +237,10 @@ function CategoryForm({
         ? await updateCategory(category.id, parsed.data)
         : await createCategory(parsed.data);
       if (!result.ok) {
-        setError(result.message);
+        setError(t.errors[result.error]);
         return;
       }
-      toast.success(category ? "Categoría guardada" : "Categoría creada");
+      toast.success(category ? t.categories.saved : t.categories.created);
       onDone();
     });
   }
@@ -235,7 +248,7 @@ function CategoryForm({
   function remove() {
     if (!category) return;
     startTransition(async () => {
-      const error = await deleteWithUndo(category);
+      const error = await deleteWithUndo(category, t);
       if (error) setError(error);
       else onDone();
     });
@@ -249,7 +262,7 @@ function CategoryForm({
           type="button"
           onClick={() => setPickerOpen((open) => !open)}
           aria-expanded={pickerOpen}
-          aria-label={`Emoji: ${shownEmoji}. Cambiar`}
+          aria-label={t.categories.changeEmoji(shownEmoji)}
           className="relative flex size-14 shrink-0 items-center justify-center rounded-2xl text-3xl ring-ring focus-visible:ring-2 focus-visible:outline-none"
           style={{ background: color }}
         >
@@ -260,21 +273,21 @@ function CategoryForm({
         </button>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-semibold">
-            {name.trim() || "Nombre de la categoría"}
+            {name.trim() || t.categories.namePlaceholderPreview}
           </span>
           <span className="truncate text-xs text-muted-foreground">
             {kind === "income"
-              ? "Ingreso"
+              ? t.categories.income
               : budgetPreview !== null &&
-                `${formatMoney(budgetPreview, currency)} al mes · `}
+                t.categories.perMonth(formatMoney(budgetPreview, currency))}
             {kind === "expense" &&
               (keywords.length > 0
                 ? keywords.join(", ")
-                : "Sin palabras clave")}
+                : t.categories.noKeywords)}
           </span>
           {!emoji && suggestion && (
             <span className="text-xs text-primary">
-              Emoji sugerido por el nombre · toca para cambiarlo
+              {t.categories.emojiSuggested}
             </span>
           )}
         </div>
@@ -293,23 +306,25 @@ function CategoryForm({
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold">Nombre</span>
+        <span className="text-sm font-semibold">{t.categories.name}</span>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={40}
-          placeholder="Mascotas"
+          placeholder={t.categories.namePlaceholder}
           className="h-11"
         />
       </label>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-sm font-semibold">Tipo</legend>
+        <legend className="mb-1.5 text-sm font-semibold">
+          {t.categories.type}
+        </legend>
         <div className="flex gap-1 rounded-2xl bg-muted p-1">
           {(
             [
-              ["expense", "Gasto"],
-              ["income", "Ingreso"],
+              ["expense", t.categories.expense],
+              ["income", t.categories.income],
             ] as const
           ).map(([value, label]) => (
             <label
@@ -335,7 +350,9 @@ function CategoryForm({
       </fieldset>
 
       <fieldset>
-        <legend className="mb-1.5 text-sm font-semibold">Color</legend>
+        <legend className="mb-1.5 text-sm font-semibold">
+          {t.categories.color}
+        </legend>
         <div className="flex flex-wrap gap-2">
           {CATEGORY_COLORS.map((c) => (
             <label
@@ -349,7 +366,7 @@ function CategoryForm({
                 value={c}
                 checked={color === c}
                 onChange={() => setColor(c)}
-                aria-label={`Color ${c}`}
+                aria-label={t.categories.colorLabel(c)}
                 className="sr-only"
               />
               {color === c && <Check className="size-4 text-neutral-900" />}
@@ -361,28 +378,27 @@ function CategoryForm({
       {kind === "expense" && (
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold">
-            Presupuesto mensual ({currency})
+            {t.categories.budget(currency)}
           </span>
           <AmountInput
             value={budget}
             onChange={setBudget}
             currency={currency}
-            placeholder="Sin presupuesto"
+            placeholder={t.categories.noBudget}
             className="h-11"
           />
           <span className="text-xs text-muted-foreground">
-            Opcional. Verás cuánto te queda cada mes en el inicio.
+            {t.categories.budgetHint}
           </span>
         </label>
       )}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="keywords" className="text-sm font-semibold">
-          Palabras clave
+          {t.categories.keywords}
         </label>
         <span className="-mt-1 text-xs text-muted-foreground">
-          Si escribes una en el quick add, se elige esta categoría. Escribe y
-          pulsa Enter o coma; toca una para quitarla.
+          {t.categories.keywordsHint}
         </span>
         <KeywordsInput
           value={keywords}
@@ -399,9 +415,9 @@ function CategoryForm({
       )}
 
       <FormFooter
-        submitLabel={category ? "Guardar cambios" : "Crear categoría"}
+        submitLabel={category ? t.common.saveChanges : t.categories.create}
         pending={pending}
-        deleteLabel="Eliminar categoría"
+        deleteLabel={t.categories.delete}
         onDelete={category ? remove : undefined}
       />
     </form>
@@ -414,21 +430,19 @@ function CategoryForm({
  */
 async function deleteWithUndo(
   category: CategoryWithCount,
+  t: Dictionary,
 ): Promise<string | null> {
   const result = await deleteCategory(category.id);
-  if (!result.ok) return result.message;
+  if (!result.ok) return t.errors[result.error];
   const { transactionCount: count } = category;
-  toast(`${category.emoji} ${category.name} eliminada`, {
-    description:
-      count > 0
-        ? `${count} ${count === 1 ? "movimiento quedó" : "movimientos quedaron"} sin categoría.`
-        : undefined,
+  toast(t.categories.deleted(category.emoji, category.name), {
+    description: count > 0 ? t.categories.leftUncategorized(count) : undefined,
     duration: 8000,
     action: {
-      label: "Deshacer",
+      label: t.common.undo,
       onClick: async () => {
         const restored = await restoreCategory(result.data);
-        if (!restored.ok) toast.error(restored.message);
+        if (!restored.ok) toast.error(t.errors[restored.error]);
       },
     },
   });

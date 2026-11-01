@@ -8,7 +8,7 @@ import { DashboardFeed } from "@/components/dashboard-feed";
 import { getActiveList, getCategories, getTransactions } from "@/lib/data";
 import { budgetStatuses, spentByCategory } from "@/lib/budgets";
 import { startOfMonthISO } from "@/lib/dates";
-import { getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref } from "@/i18n/server";
 
 const RECENT_LIMIT = 20;
 
@@ -21,7 +21,7 @@ export default function Home() {
 }
 
 async function Dashboard() {
-  const to = await getLocalHref();
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
   // "Hoy" y "este mes" dependen de la hora: se calculan en cada request.
   await connection();
   const list = await getActiveList();
@@ -52,7 +52,7 @@ async function Dashboard() {
               href={to("/transactions")}
               className="text-center text-sm font-semibold text-primary"
             >
-              Ver todos los movimientos
+              {t.home.seeAll}
             </Link>
           )
         }

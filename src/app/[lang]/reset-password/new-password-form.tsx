@@ -4,9 +4,11 @@ import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/provider";
 import { updatePassword, type PasswordState } from "@/app/[lang]/login/actions";
 
 export function NewPasswordForm() {
+  const t = useT();
   const [state, action, pending] = useActionState<PasswordState, FormData>(
     updatePassword,
     { status: "idle" },
@@ -15,21 +17,21 @@ export function NewPasswordForm() {
   return (
     <form action={action} className="flex flex-col gap-3">
       <label htmlFor="password" className="text-sm font-semibold">
-        Contraseña nueva
+        {t.auth.newPassword}
       </label>
       <Input
         id="password"
         name="password"
         type="password"
         autoComplete="new-password"
-        placeholder="Mínimo 8 caracteres"
+        placeholder={t.auth.passwordPlaceholder}
         minLength={8}
         maxLength={72}
         required
         className="h-11"
       />
       <label htmlFor="confirm" className="text-sm font-semibold">
-        Repítela
+        {t.auth.repeatPassword}
       </label>
       <Input
         id="confirm"
@@ -43,12 +45,12 @@ export function NewPasswordForm() {
       />
       {state.status === "error" && (
         <p role="alert" className="text-sm text-destructive">
-          {state.message}
+          {t.errors[state.error]}
         </p>
       )}
       <Button type="submit" size="lg" className="h-11" disabled={pending}>
         {pending && <Loader2 className="animate-spin" />}
-        Guardar y entrar
+        {t.auth.saveAndSignIn}
       </Button>
     </form>
   );

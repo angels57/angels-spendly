@@ -5,7 +5,7 @@ import { AppNav } from "@/components/app-nav";
 import { InstallPrompt } from "@/components/pwa";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActiveList, getCurrentUser } from "@/lib/data";
-import { getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref } from "@/i18n/server";
 
 export default function AppLayout({ children }: LayoutProps<"/[lang]">) {
   return (
@@ -24,7 +24,7 @@ export default function AppLayout({ children }: LayoutProps<"/[lang]">) {
 }
 
 async function AppHeader() {
-  const to = await getLocalHref();
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
   const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
   return (
     <header className="flex items-center gap-3">
@@ -38,7 +38,7 @@ async function AppHeader() {
       {/* Tema, moneda, exportar y cerrar sesión viven en Ajustes. */}
       <Link
         href={to("/settings")}
-        aria-label="Ajustes"
+        aria-label={t.common.settings}
         className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <Settings className="size-5" />

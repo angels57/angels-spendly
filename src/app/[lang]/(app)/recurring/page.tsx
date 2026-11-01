@@ -5,23 +5,25 @@ import { ChevronLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecurringManager } from "@/components/recurring-manager";
 import { getActiveList, getCategories, getRecurring } from "@/lib/data";
-import { getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Recurrentes" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).meta.recurring };
+}
 
 export default async function RecurringPage() {
-  const to = await getLocalHref();
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1">
         <Link
           href={to("/transactions")}
-          aria-label="Volver a movimientos"
+          aria-label={t.recurring.back}
           className="rounded-full p-2 hover:bg-muted"
         >
           <ChevronLeft className="size-5" />
         </Link>
-        <h2 className="text-lg font-extrabold">Recurrentes</h2>
+        <h2 className="text-lg font-extrabold">{t.recurring.title}</h2>
       </div>
       <Suspense fallback={<Skeleton className="h-64 rounded-xl" />}>
         <Recurring />

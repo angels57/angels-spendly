@@ -18,9 +18,11 @@ import {
 } from "@/lib/dates";
 import { OtherCurrencies } from "@/components/month-summary";
 import { formatMoney, totalsByCurrency } from "@/lib/money";
-import { getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Movimientos" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).meta.transactions };
+}
 
 export default function TransactionsPage({
   searchParams,
@@ -35,7 +37,7 @@ export default function TransactionsPage({
 async function TransactionsView({
   searchParams,
 }: Pick<PageProps<"/[lang]/transactions">, "searchParams">) {
-  const to = await getLocalHref();
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
   // El mes por defecto depende de la fecha actual.
   await connection();
   const params = await searchParams;
@@ -78,8 +80,7 @@ async function TransactionsView({
 
       <div className="flex flex-col gap-0.5">
         <p className="text-sm text-muted-foreground">
-          {transactions.length}{" "}
-          {transactions.length === 1 ? "movimiento" : "movimientos"}
+          {t.transactions.count(transactions.length)}
           {spent > 0 && (
             <>
               {" · "}
@@ -109,7 +110,7 @@ async function TransactionsView({
           className="flex h-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
         >
           <Repeat className="size-4" />
-          Recurrentes
+          {t.transactions.recurring}
         </Link>
       </div>
 
@@ -119,9 +120,7 @@ async function TransactionsView({
         currency={list.currency}
         empty={
           <p className="py-10 text-center text-sm text-muted-foreground">
-            {filtered
-              ? "Ningún movimiento coincide con los filtros."
-              : "No hay movimientos este mes."}
+            {filtered ? t.transactions.noMatches : t.transactions.emptyMonth}
           </p>
         }
       />

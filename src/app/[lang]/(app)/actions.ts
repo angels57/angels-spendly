@@ -9,6 +9,7 @@ import {
   transactionInputSchema,
   type TransactionInput,
 } from "@/lib/schemas";
+import type { ErrorCode } from "@/i18n/errors";
 import { createClient } from "@/lib/supabase/server";
 
 // Las Server Actions se pueden llamar con un POST directo: siempre validar
@@ -17,9 +18,9 @@ import { createClient } from "@/lib/supabase/server";
 
 type Result<T = undefined> =
   | ({ ok: true } & (T extends undefined ? object : { data: T }))
-  | { ok: false; message: string };
+  | { ok: false; error: ErrorCode };
 
-const SAVE_ERROR = "No se pudo guardar. Inténtalo de nuevo.";
+const SAVE_ERROR = "save_failed";
 
 export async function createTransaction(
   input: TransactionInput & { source: "manual" | "text" },
@@ -29,7 +30,7 @@ export async function createTransaction(
     .extend({ source: z.enum(["manual", "text"]) })
     .safeParse(input);
   if (!parsed.success) {
-    return { ok: false, message: "Revisa el monto y la fecha." };
+    return { ok: false, error: "check_amount_date" };
   }
 
   const list = await getActiveList();
@@ -43,7 +44,7 @@ export async function createTransaction(
     note: parsed.data.note,
     source: parsed.data.source,
   });
-  if (error) return { ok: false, message: SAVE_ERROR };
+  if (error) return { ok: false, error: SAVE_ERROR };
 
   refresh();
   return { ok: true };
@@ -56,7 +57,7 @@ export async function updateTransaction(
   await getCurrentUser();
   const parsed = transactionInputSchema.safeParse(input);
   if (!z.uuid().safeParse(id).success || !parsed.success) {
-    return { ok: false, message: "Revisa el monto y la fecha." };
+    return { ok: false, error: "check_amount_date" };
   }
 
   const supabase = await createClient();
@@ -72,7 +73,7 @@ export async function updateTransaction(
     .eq("id", id)
     .select("id");
   // Sin filas: no existe o RLS lo oculta (no es de tus listas).
-  if (error || data.length === 0) return { ok: false, message: SAVE_ERROR };
+  if (error || data.length === 0) return { ok: false, error: SAVE_ERROR };
 
   refresh();
   return { ok: true };
@@ -91,7 +92,7 @@ export async function deleteTransaction(
 ): Promise<Result<DeletedTransaction>> {
   await getCurrentUser();
   if (!z.uuid().safeParse(id).success) {
-    return { ok: false, message: "Movimiento no válido." };
+    return { ok: false, error: "invalid_transaction" };
   }
 
   const supabase = await createClient();
@@ -104,7 +105,7 @@ export async function deleteTransaction(
     )
     .maybeSingle();
   if (error || !data) {
-    return { ok: false, message: "No se pudo borrar. Inténtalo de nuevo." };
+    return { ok: false, error: "delete_failed" };
   }
 
   refresh();
@@ -135,7 +136,7 @@ export async function restoreTransaction(
       recurringId: z.uuid().nullable(),
     })
     .safeParse(deleted);
-  if (!parsed.success) return { ok: false, message: SAVE_ERROR };
+  if (!parsed.success) return { ok: false, error: SAVE_ERROR };
 
   const list = await getActiveList();
   const supabase = await createClient();
@@ -150,7 +151,7 @@ export async function restoreTransaction(
     source: parsed.data.source,
     recurring_id: parsed.data.recurringId,
   });
-  if (error) return { ok: false, message: SAVE_ERROR };
+  if (error) return { ok: false, error: SAVE_ERROR };
 
   refresh();
   return { ok: true };
@@ -160,7 +161,7 @@ export async function restoreTransaction(
 export async function setListCurrency(currency: string): Promise<Result> {
   await getCurrentUser();
   const parsed = currencySchema.safeParse(currency);
-  if (!parsed.success) return { ok: false, message: "Moneda no válida." };
+  if (!parsed.success) return { ok: false, error: "invalid_currency" };
 
   const list = await getActiveList();
   const supabase = await createClient();
@@ -171,7 +172,7 @@ export async function setListCurrency(currency: string): Promise<Result> {
     .select("id");
   // Sin filas: RLS solo deja cambiarla al dueño de la lista.
   if (error || data.length === 0) {
-    return { ok: false, message: "Solo el dueño de la lista puede cambiarla." };
+    return { ok: false, error: "owner_only" };
   }
 
   refresh();

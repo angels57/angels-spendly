@@ -9,9 +9,11 @@ import { InstallRow, ThemeSelect } from "@/components/settings";
 import { signOut } from "@/app/[lang]/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 import { APP_SHORT_NAME } from "@/lib/brand";
-import { getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Ajustes" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).meta.settings };
+}
 
 export default function SettingsPage() {
   return (
@@ -22,26 +24,30 @@ export default function SettingsPage() {
 }
 
 async function Settings() {
-  const to = await getLocalHref();
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
   const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
 
   return (
     <div className="flex flex-col gap-6 pb-10">
-      <h2 className="text-2xl font-extrabold tracking-tight">Ajustes</h2>
+      <h2 className="text-2xl font-extrabold tracking-tight">
+        {t.common.settings}
+      </h2>
 
-      <Section title="Cuenta">
+      <Section title={t.settings.account}>
         <div className="flex items-center gap-3 p-4">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary uppercase">
             {user.email.charAt(0)}
           </span>
           <div className="min-w-0">
             <p className="truncate font-semibold">{user.email}</p>
-            <p className="text-sm text-muted-foreground">Lista «{list.name}»</p>
+            <p className="text-sm text-muted-foreground">
+              {t.settings.list(list.name)}
+            </p>
           </div>
         </div>
       </Section>
 
-      <Section title="Preferencias">
+      <Section title={t.settings.preferences}>
         <div className="p-4">
           <CurrencySettings
             // Si la moneda cambia en otro sitio, el selector se reinicia.
@@ -50,15 +56,15 @@ async function Settings() {
           />
         </div>
         <div className="flex flex-col gap-2 p-4">
-          <span className="text-sm font-semibold">Tema</span>
+          <span className="text-sm font-semibold">{t.settings.theme}</span>
           <ThemeSelect />
         </div>
         <RowLink href={to("/recurring")} icon={<Repeat className="size-5" />}>
-          Movimientos recurrentes
+          {t.settings.recurring}
         </RowLink>
       </Section>
 
-      <Section title="Datos">
+      <Section title={t.settings.data}>
         <a
           href={to("/settings/export")}
           download
@@ -66,16 +72,16 @@ async function Settings() {
         >
           <Download className="size-5 text-muted-foreground" />
           <span className="flex flex-1 flex-col">
-            <span className="font-semibold">Exportar movimientos</span>
+            <span className="font-semibold">{t.settings.export}</span>
             <span className="text-xs text-muted-foreground">
-              Archivo CSV para Excel o Google Sheets.
+              {t.settings.exportHint}
             </span>
           </span>
           <ChevronRight className="size-4 text-muted-foreground" />
         </a>
         <div className="flex flex-col gap-2 p-4">
           <span className="text-sm font-semibold">
-            Instalar {APP_SHORT_NAME}
+            {t.settings.install(APP_SHORT_NAME)}
           </span>
           <InstallRow />
         </div>
@@ -88,7 +94,7 @@ async function Settings() {
           className="h-11 w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut />
-          Cerrar sesión
+          {t.settings.signOut}
         </Button>
       </form>
     </div>

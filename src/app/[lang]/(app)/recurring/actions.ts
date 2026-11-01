@@ -9,14 +9,16 @@ import {
   recurringInputSchema,
   type RecurringInput,
 } from "@/lib/schemas";
+import { toErrorCode, type ErrorCode } from "@/i18n/errors";
 import { createClient } from "@/lib/supabase/server";
 
-type Result = { ok: true; generated?: number } | { ok: false; message: string };
+type Result =
+  { ok: true; generated?: number } | { ok: false; error: ErrorCode };
 
 function invalid(error: z.ZodError): Result {
   return {
     ok: false,
-    message: error.issues[0]?.message ?? "Revisa los datos.",
+    error: toErrorCode(error.issues[0]?.message),
   };
 }
 
@@ -38,7 +40,7 @@ export async function createRecurring(input: RecurringInput): Promise<Result> {
     end_date: parsed.data.endDate,
     next_run: parsed.data.startDate,
   });
-  if (error) return { ok: false, message: "No se pudo crear el recurrente." };
+  if (error) return { ok: false, error: "recurring_create_failed" };
 
   // Si empieza hoy o en el pasado, crea ya los movimientos pendientes en
   // vez de esperar a la tarea diaria.
@@ -49,7 +51,7 @@ export async function createRecurring(input: RecurringInput): Promise<Result> {
   if (genError) {
     return {
       ok: false,
-      message: "Creado, pero no se generaron sus movimientos.",
+      error: "recurring_not_generated",
     };
   }
 
@@ -76,7 +78,7 @@ export async function updateRecurring(
   await getCurrentUser();
   const parsed = recurringUpdateSchema.safeParse(input);
   if (!z.uuid().safeParse(id).success || !parsed.success) {
-    return { ok: false, message: "Revisa los datos." };
+    return { ok: false, error: "check_data" };
   }
 
   const supabase = await createClient();
@@ -94,11 +96,11 @@ export async function updateRecurring(
   if (error?.code === "23514") {
     return {
       ok: false,
-      message: "La fecha de fin no puede ser anterior al inicio.",
+      error: "end_before_start",
     };
   }
   if (error || data.length === 0) {
-    return { ok: false, message: "No se pudo guardar el recurrente." };
+    return { ok: false, error: "recurring_save_failed" };
   }
 
   refresh();
@@ -117,11 +119,11 @@ export type DeletedRecurring = {
 export async function deleteRecurring(
   id: string,
 ): Promise<
-  { ok: true; data: DeletedRecurring } | { ok: false; message: string }
+  { ok: true; data: DeletedRecurring } | { ok: false; error: ErrorCode }
 > {
   await getCurrentUser();
   if (!z.uuid().safeParse(id).success) {
-    return { ok: false, message: "Recurrente no válido." };
+    return { ok: false, error: "invalid_recurring" };
   }
 
   // Se guarda lo necesario para deshacer. Los movimientos ya generados se
@@ -138,7 +140,7 @@ export async function deleteRecurring(
     supabase.from("transactions").select("id").eq("recurring_id", id),
   ]);
   if (rule.error || !rule.data || transactions.error) {
-    return { ok: false, message: "No se pudo borrar el recurrente." };
+    return { ok: false, error: "recurring_delete_failed" };
   }
 
   const { data, error } = await supabase
@@ -147,7 +149,7 @@ export async function deleteRecurring(
     .eq("id", id)
     .select("id");
   if (error || data.length === 0) {
-    return { ok: false, message: "No se pudo borrar el recurrente." };
+    return { ok: false, error: "recurring_delete_failed" };
   }
 
   refresh();
@@ -186,7 +188,7 @@ export async function restoreRecurring(
 ): Promise<Result> {
   await getCurrentUser();
   const parsed = deletedRecurringSchema.safeParse(deleted);
-  if (!parsed.success) return { ok: false, message: "No se pudo deshacer." };
+  if (!parsed.success) return { ok: false, error: "undo_failed" };
   const { id, input, generatedCount, nextRun, transactionIds } = parsed.data;
 
   const list = await getActiveList();
@@ -204,7 +206,7 @@ export async function restoreRecurring(
     generated_count: generatedCount,
     next_run: nextRun,
   });
-  if (error) return { ok: false, message: "No se pudo deshacer." };
+  if (error) return { ok: false, error: "undo_failed" };
 
   // PostgREST pone los ids del filtro "in" en la URL: por tandas.
   const results = await Promise.all(
@@ -221,7 +223,7 @@ export async function restoreRecurring(
   if (results.some((r) => r.error)) {
     return {
       ok: false,
-      message: "Recurrente restaurado, pero no todos sus movimientos.",
+      error: "recurring_restored_partially",
     };
   }
   return { ok: true };

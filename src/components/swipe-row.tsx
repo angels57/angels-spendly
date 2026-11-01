@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { cn } from "cn";
+import { useT } from "@/i18n/provider";
 
 const ACTION_WIDTH = 72; // cada botón (Editar, Borrar)
 const ACTIONS_WIDTH = ACTION_WIDTH * 2;
@@ -40,6 +41,7 @@ export function SwipeRow({
   } | null>(null);
   // Tras arrastrar, el click que dispara el navegador no debe abrir la fila.
   const suppressClick = useRef(false);
+  const t = useT();
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -125,7 +127,7 @@ export function SwipeRow({
               className="flex w-18 shrink-0 flex-col items-center justify-center gap-0.5 bg-primary/15 text-xs font-semibold text-primary"
             >
               <Pencil className="size-4" />
-              Editar
+              {t.common.edit}
             </button>
           )}
           <button
@@ -141,7 +143,7 @@ export function SwipeRow({
             )}
           >
             <Trash2 className="size-4" />
-            {fullSwipe ? "Suelta para borrar" : "Borrar"}
+            {fullSwipe ? t.common.releaseToDelete : t.common.delete}
           </button>
         </div>
       )}

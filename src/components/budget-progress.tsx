@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Category } from "@/lib/data";
 import type { BudgetStatus } from "@/lib/budgets";
 import { formatMoney } from "@/lib/money";
-import { getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref } from "@/i18n/server";
 
 export async function BudgetProgress({
   statuses,
@@ -14,15 +14,14 @@ export async function BudgetProgress({
   categories: Category[];
   currency: string;
 }) {
-  const to = await getLocalHref();
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
   if (statuses.length === 0) {
     return (
       <Link
         href={to("/categories")}
         className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted"
       >
-        💡 Ponle un presupuesto mensual a tus categorías para saber cuánto te
-        queda.
+        {t.budgets.hint}
       </Link>
     );
   }
@@ -32,7 +31,7 @@ export async function BudgetProgress({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Presupuestos</CardTitle>
+        <CardTitle>{t.budgets.title}</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col gap-4">
@@ -50,13 +49,13 @@ export async function BudgetProgress({
                     className={`shrink-0 tabular-nums ${over ? "font-bold text-destructive" : "text-muted-foreground"}`}
                   >
                     {over
-                      ? `+${formatMoney(-s.remainingCents, currency)} de más`
-                      : `Quedan ${formatMoney(s.remainingCents, currency)}`}
+                      ? t.budgets.over(formatMoney(-s.remainingCents, currency))
+                      : t.budgets.left(formatMoney(s.remainingCents, currency))}
                   </span>
                 </div>
                 <div
                   role="progressbar"
-                  aria-label={`${category.name}: ${formatMoney(s.spentCents, currency)} de ${formatMoney(s.budgetCents, currency)}`}
+                  aria-label={`${category.name}: ${t.budgets.spentOf(formatMoney(s.spentCents, currency), formatMoney(s.budgetCents, currency))}`}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(s.ratio * 100)}
@@ -73,8 +72,10 @@ export async function BudgetProgress({
                   />
                 </div>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {formatMoney(s.spentCents, currency)} de{" "}
-                  {formatMoney(s.budgetCents, currency)}
+                  {t.budgets.spentOf(
+                    formatMoney(s.spentCents, currency),
+                    formatMoney(s.budgetCents, currency),
+                  )}
                 </span>
               </li>
             );

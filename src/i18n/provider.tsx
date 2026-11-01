@@ -2,45 +2,37 @@
 
 import { createContext, useContext } from "react";
 import { localizePath, type Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/dictionaries";
+import { DICTIONARIES } from "@/i18n/dictionaries";
 
-// Idioma y textos para Client Components. El layout raíz los recibe del
-// servidor (root params) y los reparte por contexto.
+// Idioma y textos para Client Components. El layout raíz pasa solo el
+// idioma: los diccionarios tienen funciones (plurales, variables) que no se
+// pueden enviar del servidor al cliente, así que se importan aquí.
 
-const I18nContext = createContext<{
-  locale: Locale;
-  dictionary: Dictionary;
-} | null>(null);
+const I18nContext = createContext<Locale | null>(null);
 
 export function I18nProvider({
   locale,
-  dictionary,
   children,
 }: {
   locale: Locale;
-  dictionary: Dictionary;
   children: React.ReactNode;
 }) {
-  return <I18nContext value={{ locale, dictionary }}>{children}</I18nContext>;
+  return <I18nContext value={locale}>{children}</I18nContext>;
 }
 
-function useI18n() {
-  const value = useContext(I18nContext);
-  if (!value) throw new Error("Falta <I18nProvider> en el árbol.");
-  return value;
+export function useLocale(): Locale {
+  const locale = useContext(I18nContext);
+  if (!locale) throw new Error("Falta <I18nProvider> en el árbol.");
+  return locale;
 }
 
 /** Textos del idioma actual. */
 export function useT() {
-  return useI18n().dictionary;
-}
-
-export function useLocale() {
-  return useI18n().locale;
+  return DICTIONARIES[useLocale()];
 }
 
 /** Ruta interna con el prefijo del idioma actual: "/settings" → "/es/settings". */
 export function useLocalHref() {
-  const { locale } = useI18n();
+  const locale = useLocale();
   return (path: string) => localizePath(locale, path);
 }

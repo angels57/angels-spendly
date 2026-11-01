@@ -5,9 +5,10 @@ import { z } from "zod";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 import { fromCents, toCents } from "@/lib/money";
 import { categoryInputSchema, type CategoryInput } from "@/lib/schemas";
+import { toErrorCode, type ErrorCode } from "@/i18n/errors";
 import { createClient } from "@/lib/supabase/server";
 
-type Result = { ok: true } | { ok: false; message: string };
+type Result = { ok: true } | { ok: false; error: ErrorCode };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -46,7 +47,7 @@ function categoryColumns({
 function invalid(error: z.ZodError): Result {
   return {
     ok: false,
-    message: error.issues[0]?.message ?? "Revisa los datos.",
+    error: toErrorCode(error.issues[0]?.message),
   };
 }
 
@@ -72,11 +73,11 @@ export async function createCategory(input: CategoryInput): Promise<Result> {
     })
     .select("id")
     .single();
-  if (error) return { ok: false, message: "No se pudo crear la categoría." };
+  if (error) return { ok: false, error: "category_create_failed" };
 
   const budget = await saveBudget(supabase, list.id, data.id, parsed.data);
   if (budget.error) {
-    return { ok: false, message: "Categoría creada, pero no su presupuesto." };
+    return { ok: false, error: "category_created_without_budget" };
   }
 
   refresh();
@@ -91,7 +92,7 @@ export async function updateCategory(
   const parsed = categoryInputSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
   if (!z.uuid().safeParse(id).success) {
-    return { ok: false, message: "Categoría no válida." };
+    return { ok: false, error: "invalid_category" };
   }
 
   const supabase = await createClient();
@@ -101,12 +102,12 @@ export async function updateCategory(
     .eq("id", id)
     .select("id, list_id");
   if (error || data.length === 0) {
-    return { ok: false, message: "No se pudo guardar la categoría." };
+    return { ok: false, error: "category_save_failed" };
   }
 
   const budget = await saveBudget(supabase, data[0].list_id, id, parsed.data);
   if (budget.error) {
-    return { ok: false, message: "No se pudo guardar el presupuesto." };
+    return { ok: false, error: "budget_save_failed" };
   }
 
   refresh();
@@ -125,11 +126,11 @@ export type DeletedCategory = {
 export async function deleteCategory(
   id: string,
 ): Promise<
-  { ok: true; data: DeletedCategory } | { ok: false; message: string }
+  { ok: true; data: DeletedCategory } | { ok: false; error: ErrorCode }
 > {
   await getCurrentUser();
   if (!z.uuid().safeParse(id).success) {
-    return { ok: false, message: "Categoría no válida." };
+    return { ok: false, error: "invalid_category" };
   }
 
   // Antes de borrar se guarda lo necesario para deshacer: la categoría, su
@@ -153,7 +154,7 @@ export async function deleteCategory(
     transactions.error ||
     recurring.error
   ) {
-    return { ok: false, message: "No se pudo borrar la categoría." };
+    return { ok: false, error: "category_delete_failed" };
   }
 
   const { data, error } = await supabase
@@ -162,7 +163,7 @@ export async function deleteCategory(
     .eq("id", id)
     .select("id");
   if (error || data.length === 0) {
-    return { ok: false, message: "No se pudo borrar la categoría." };
+    return { ok: false, error: "category_delete_failed" };
   }
 
   refresh();
@@ -203,7 +204,7 @@ export async function restoreCategory(
 ): Promise<Result> {
   await getCurrentUser();
   const parsed = deletedCategorySchema.safeParse(deleted);
-  if (!parsed.success) return { ok: false, message: "No se pudo deshacer." };
+  if (!parsed.success) return { ok: false, error: "undo_failed" };
   const { id, input, sortOrder, transactionIds, recurringIds } = parsed.data;
 
   const list = await getActiveList();
@@ -214,7 +215,7 @@ export async function restoreCategory(
     list_id: list.id,
     sort_order: sortOrder,
   });
-  if (error) return { ok: false, message: "No se pudo deshacer." };
+  if (error) return { ok: false, error: "undo_failed" };
 
   const budget = await saveBudget(supabase, list.id, id, input);
   // Solo los que siguen sin categoría: si alguno se cambió mientras tanto,
@@ -241,7 +242,7 @@ export async function restoreCategory(
   if (budget.error || results.some((r) => r.error)) {
     return {
       ok: false,
-      message: "Categoría restaurada, pero no todos sus movimientos.",
+      error: "category_restored_partially",
     };
   }
   return { ok: true };

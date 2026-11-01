@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
 import { localizePath } from "@/i18n/config";
+import type { ErrorCode } from "@/i18n/errors";
 import { getRequestLocale } from "@/i18n/request";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,7 +14,7 @@ async function localized(path: string) {
   return localizePath(await getRequestLocale(), path);
 }
 
-type ErrorState = { status: "error"; message: string };
+type ErrorState = { status: "error"; error: ErrorCode };
 
 export type LoginState =
   | { status: "idle" }
@@ -31,11 +32,11 @@ const credentialsSchema = z.object({
 
 const INVALID_EMAIL: ErrorState = {
   status: "error",
-  message: "Escribe un correo válido.",
+  error: "invalid_email",
 };
 const INVALID_PASSWORD: ErrorState = {
   status: "error",
-  message: "La contraseña debe tener entre 8 y 72 caracteres.",
+  error: "password_length",
 };
 
 function parseCredentials(formData: FormData) {
@@ -45,22 +46,22 @@ function parseCredentials(formData: FormData) {
   });
 }
 
-function authError(error: AuthError, fallback: string): ErrorState {
-  const message =
+function authError(error: AuthError, fallback: ErrorCode): ErrorState {
+  const code: ErrorCode =
     error.status === 429
-      ? "Demasiados intentos. Espera un momento y vuelve a probar."
+      ? "too_many_attempts"
       : error.code === "invalid_credentials"
-        ? "Correo o contraseña incorrectos."
+        ? "invalid_credentials"
         : error.code === "email_not_confirmed"
-          ? "Confirma tu correo antes de entrar: revisa tu bandeja de entrada."
+          ? "email_not_confirmed"
           : error.code === "weak_password"
-            ? "Esa contraseña es demasiado débil. Prueba con otra más larga."
+            ? "weak_password"
             : error.code === "same_password"
-              ? "La nueva contraseña debe ser distinta de la anterior."
+              ? "same_password"
               : error.code === "user_already_exists"
-                ? "Ese correo ya tiene cuenta. Entra con tu contraseña."
+                ? "user_already_exists"
                 : fallback;
-  return { status: "error", message };
+  return { status: "error", error: code };
 }
 
 async function callbackUrl(next?: string) {
@@ -82,8 +83,7 @@ export async function sendMagicLink(
     options: { emailRedirectTo: await callbackUrl() },
   });
 
-  if (error)
-    return authError(error, "No pudimos enviar el enlace. Inténtalo de nuevo.");
+  if (error) return authError(error, "link_send_failed");
   return { status: "sent", email: parsed.data, reason: "link" };
 }
 
@@ -93,13 +93,12 @@ export async function signInWithPassword(
 ): Promise<LoginState> {
   const parsed = parseCredentials(formData);
   if (!parsed.success) {
-    return { status: "error", message: "Correo o contraseña incorrectos." };
+    return { status: "error", error: "invalid_credentials" };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error)
-    return authError(error, "No pudimos iniciar sesión. Inténtalo de nuevo.");
+  if (error) return authError(error, "sign_in_failed");
   redirect(await localized("/"));
 }
 
@@ -119,8 +118,7 @@ export async function signUp(
     ...parsed.data,
     options: { emailRedirectTo: await callbackUrl() },
   });
-  if (error)
-    return authError(error, "No pudimos crear la cuenta. Inténtalo de nuevo.");
+  if (error) return authError(error, "sign_up_failed");
 
   // Sin confirmación por correo (lo configurado): sesión al momento.
   if (data.session) redirect(await localized("/"));
@@ -139,8 +137,7 @@ export async function requestPasswordReset(
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
     redirectTo: await callbackUrl(await localized("/reset-password")),
   });
-  if (error)
-    return authError(error, "No pudimos enviar el correo. Inténtalo de nuevo.");
+  if (error) return authError(error, "email_send_failed");
   return { status: "sent", email: parsed.data, reason: "reset" };
 }
 
@@ -153,16 +150,12 @@ export async function updatePassword(
   const password = passwordSchema.safeParse(formData.get("password"));
   if (!password.success) return INVALID_PASSWORD;
   if (password.data !== formData.get("confirm")) {
-    return { status: "error", message: "Las contraseñas no coinciden." };
+    return { status: "error", error: "passwords_mismatch" };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password: password.data });
-  if (error)
-    return authError(
-      error,
-      "No pudimos guardar la contraseña. Inténtalo de nuevo.",
-    );
+  if (error) return authError(error, "password_save_failed");
   redirect(await localized("/"));
 }
 

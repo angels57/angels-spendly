@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/provider";
 import {
   requestPasswordReset,
   sendMagicLink,
@@ -18,30 +19,13 @@ const MODES: Record<
   Mode,
   {
     action: (prev: LoginState, formData: FormData) => Promise<LoginState>;
-    submit: string;
     password?: "current-password" | "new-password";
   }
 > = {
-  password: {
-    action: signInWithPassword,
-    submit: "Entrar",
-    password: "current-password",
-  },
-  signup: { action: signUp, submit: "Crear cuenta", password: "new-password" },
-  reset: {
-    action: requestPasswordReset,
-    submit: "Enviarme un enlace para cambiarla",
-  },
-  link: { action: sendMagicLink, submit: "Enviarme un enlace" },
-};
-
-const SENT_MESSAGES: Record<
-  Extract<LoginState, { status: "sent" }>["reason"],
-  string
-> = {
-  link: "Ábrelo en este mismo navegador para entrar.",
-  signup: "Ábrelo para confirmar tu cuenta y entrar.",
-  reset: "Ábrelo en este mismo navegador para elegir una contraseña nueva.",
+  password: { action: signInWithPassword, password: "current-password" },
+  signup: { action: signUp, password: "new-password" },
+  reset: { action: requestPasswordReset },
+  link: { action: sendMagicLink },
 };
 
 export function LoginForm({ linkError }: { linkError: boolean }) {
@@ -75,7 +59,8 @@ function AuthForm({
   onEmailChange: (email: string) => void;
   linkError: boolean;
 }) {
-  const { action: modeAction, submit, password } = MODES[mode];
+  const t = useT();
+  const { action: modeAction, password } = MODES[mode];
   const [state, action, pending] = useActionState<LoginState, FormData>(
     modeAction,
     { status: "idle" },
@@ -85,17 +70,17 @@ function AuthForm({
     return (
       <div className="flex flex-col items-center gap-3 text-center">
         <MailCheck className="size-10 text-primary" />
-        <p className="font-semibold">Revisa tu correo</p>
+        <p className="font-semibold">{t.auth.sent.title}</p>
         <p className="text-sm text-muted-foreground">
-          Enviamos un enlace a <strong>{state.email}</strong>.{" "}
-          {SENT_MESSAGES[state.reason]}
+          {t.auth.sent.intro} <strong>{state.email}</strong>.{" "}
+          {t.auth.sent[state.reason]}
         </p>
         <Button
           variant="link"
           className="h-11"
           onClick={() => onModeChange("password")}
         >
-          Volver a entrar con contraseña
+          {t.auth.backToPassword}
         </Button>
       </div>
     );
@@ -103,31 +88,31 @@ function AuthForm({
 
   const message =
     state.status === "error"
-      ? state.message
+      ? t.errors[state.error]
       : linkError && mode === "password"
-        ? "El enlace no es válido o ya caducó. Pide uno nuevo."
+        ? t.auth.linkExpired
         : null;
 
   return (
     <div className="flex flex-col gap-4">
       {mode === "signup" && (
-        <p className="text-center font-semibold">Crea tu cuenta</p>
+        <p className="text-center font-semibold">{t.auth.signupTitle}</p>
       )}
       {mode === "reset" && (
         <p className="text-center text-sm text-muted-foreground">
-          Te enviaremos un enlace para elegir una contraseña nueva.
+          {t.auth.resetHint}
         </p>
       )}
       <form action={action} className="flex flex-col gap-3">
         <label htmlFor="email" className="text-sm font-semibold">
-          Correo electrónico
+          {t.auth.email}
         </label>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="tu@correo.com"
+          placeholder={t.auth.emailPlaceholder}
           required
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
@@ -137,7 +122,7 @@ function AuthForm({
           <>
             <div className="flex items-baseline justify-between">
               <label htmlFor="password" className="text-sm font-semibold">
-                Contraseña
+                {t.auth.password}
               </label>
               {mode === "password" && (
                 <button
@@ -145,7 +130,7 @@ function AuthForm({
                   onClick={() => onModeChange("reset")}
                   className="-my-3 py-3 pl-4 text-xs text-muted-foreground underline-offset-4 hover:underline"
                 >
-                  ¿La olvidaste?
+                  {t.auth.forgot}
                 </button>
               )}
             </div>
@@ -155,7 +140,7 @@ function AuthForm({
               type="password"
               autoComplete={password}
               placeholder={
-                mode === "signup" ? "Mínimo 8 caracteres" : undefined
+                mode === "signup" ? t.auth.passwordPlaceholder : undefined
               }
               minLength={mode === "signup" ? 8 : undefined}
               maxLength={72}
@@ -171,7 +156,7 @@ function AuthForm({
         )}
         <Button type="submit" size="lg" className="h-11" disabled={pending}>
           {pending && <Loader2 className="animate-spin" />}
-          {submit}
+          {t.auth.submit[mode]}
         </Button>
       </form>
 
@@ -183,14 +168,14 @@ function AuthForm({
               className="h-11"
               onClick={() => onModeChange("signup")}
             >
-              ¿No tienes cuenta? Crear una
+              {t.auth.noAccount}
             </Button>
             <Button
               variant="link"
               className="h-11 text-muted-foreground"
               onClick={() => onModeChange("link")}
             >
-              Entrar sin contraseña, con un enlace al correo
+              {t.auth.magicLink}
             </Button>
           </>
         ) : (
@@ -199,9 +184,7 @@ function AuthForm({
             className="h-11"
             onClick={() => onModeChange("password")}
           >
-            {mode === "signup"
-              ? "¿Ya tienes cuenta? Entrar"
-              : "Volver a entrar con contraseña"}
+            {mode === "signup" ? t.auth.haveAccount : t.auth.backToPassword}
           </Button>
         )}
       </div>

@@ -5,11 +5,12 @@ import { Check, Monitor, Moon, Share, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n/provider";
 
 const THEMES = [
-  { value: "light", label: "Claro", icon: Sun },
-  { value: "dark", label: "Oscuro", icon: Moon },
-  { value: "system", label: "Auto", icon: Monitor },
+  { value: "light", icon: Sun },
+  { value: "dark", icon: Moon },
+  { value: "system", icon: Monitor },
 ] as const;
 
 const noopSubscribe = () => () => {};
@@ -22,6 +23,7 @@ const useMounted = () =>
 
 /** Claro / Oscuro / Auto (el del dispositivo). */
 export function ThemeSelect() {
+  const t = useT();
   const { theme, setTheme } = useTheme();
   // El tema guardado solo se conoce en el cliente.
   const current = useMounted() ? (theme ?? "system") : null;
@@ -29,10 +31,10 @@ export function ThemeSelect() {
   return (
     <div
       role="radiogroup"
-      aria-label="Tema"
+      aria-label={t.theme.label}
       className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1"
     >
-      {THEMES.map(({ value, label, icon: Icon }) => (
+      {THEMES.map(({ value, icon: Icon }) => (
         <button
           key={value}
           type="button"
@@ -47,7 +49,7 @@ export function ThemeSelect() {
           )}
         >
           <Icon className="size-4" />
-          {label}
+          {t.theme[value]}
         </button>
       ))}
     </div>
@@ -72,6 +74,7 @@ function readInstallState(): InstallState {
 
 /** Estado de la instalación como app y cómo hacerla. */
 export function InstallRow() {
+  const t = useT();
   const state = useSyncExternalStore(
     noopSubscribe,
     readInstallState,
@@ -101,7 +104,7 @@ export function InstallRow() {
     return (
       <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Check className="size-4 text-emerald-600" />
-        Ya la usas como app.
+        {t.install.installed}
       </p>
     );
   }
@@ -117,7 +120,7 @@ export function InstallRow() {
           if (outcome === "accepted") setInstalled(true);
         }}
       >
-        Instalar en este dispositivo
+        {t.install.button}
       </Button>
     );
   }
@@ -125,11 +128,12 @@ export function InstallRow() {
     <p className="text-sm text-muted-foreground">
       {state === "ios" ? (
         <>
-          En Safari, pulsa <Share className="inline size-4 align-text-bottom" />{" "}
-          Compartir y luego «Añadir a pantalla de inicio».
+          {t.install.safariTap}{" "}
+          <Share className="inline size-4 align-text-bottom" />{" "}
+          {t.install.shareThenAdd}
         </>
       ) : (
-        "Abre el menú del navegador y elige «Instalar app» o «Añadir a pantalla de inicio»."
+        t.install.otherBrowsers
       )}
     </p>
   );

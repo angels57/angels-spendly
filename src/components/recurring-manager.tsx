@@ -25,12 +25,14 @@ import { dayLabel } from "@/lib/dates";
 import { CurrencySelect } from "@/components/currency-select";
 import { formatAmountInput, formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseAmount, toISODate } from "@/lib/parser";
-import { describeRecurrence, FREQUENCY_LABELS } from "@/lib/recurrence";
+import { describeRecurrence } from "@/lib/recurrence";
 import {
   FREQUENCIES,
   recurringInputSchema,
   NO_CATEGORY_COLOR,
 } from "@/lib/schemas";
+import { useT } from "@/i18n/provider";
+import { toErrorCode } from "@/i18n/errors";
 
 type Editing = { mode: "new" } | { mode: "edit"; rule: RecurringRow };
 
@@ -43,6 +45,7 @@ export function RecurringManager({
   categories: Category[];
   currency: CurrencyCode;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState<Editing | null>(null);
   const close = () => setEditing(null);
   const active = rules.filter((r) => r.nextRun !== null);
@@ -50,10 +53,7 @@ export function RecurringManager({
 
   return (
     <div className="flex flex-col gap-6 pb-8">
-      <p className="text-sm text-muted-foreground">
-        Alquiler, suscripciones, sueldo… Se añaden solos a tus movimientos en su
-        fecha.
-      </p>
+      <p className="text-sm text-muted-foreground">{t.recurringForm.intro}</p>
       <Button
         size="lg"
         variant="outline"
@@ -61,12 +61,12 @@ export function RecurringManager({
         onClick={() => setEditing({ mode: "new" })}
       >
         <Plus />
-        Nuevo recurrente
+        {t.recurringForm.newButton}
       </Button>
 
       {[
-        { title: "Activos", items: active },
-        { title: "Terminados", items: finished },
+        { title: t.recurringForm.active, items: active },
+        { title: t.recurringForm.finished, items: finished },
       ].map(
         (section) =>
           section.items.length > 0 && (
@@ -95,8 +95,11 @@ export function RecurringManager({
                         <span className="truncate text-xs text-muted-foreground">
                           {describeRecurrence(r.frequency, r.startDate)}
                           {r.nextRun
-                            ? ` · próximo: ${dayLabel(r.nextRun).toLowerCase()}`
-                            : r.endDate && ` · terminó ${dayLabel(r.endDate)}`}
+                            ? t.recurringForm.next(
+                                dayLabel(r.nextRun).toLowerCase(),
+                              )
+                            : r.endDate &&
+                              t.recurringForm.ended(dayLabel(r.endDate))}
                         </span>
                       </span>
                       <span
@@ -116,7 +119,7 @@ export function RecurringManager({
       {rules.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
           <Repeat className="size-8" />
-          Aún no tienes movimientos recurrentes.
+          {t.recurringForm.empty}
         </div>
       )}
 
@@ -125,8 +128,8 @@ export function RecurringManager({
           <DrawerHeader>
             <DrawerTitle className="text-lg font-bold">
               {editing?.mode === "edit"
-                ? "Editar recurrente"
-                : "Nuevo recurrente"}
+                ? t.recurringForm.editTitle
+                : t.recurringForm.newTitle}
             </DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pt-4">
@@ -157,6 +160,7 @@ function RecurringForm({
   currency: CurrencyCode;
   onDone: () => void;
 }) {
+  const t = useT();
   const [note, setNote] = useState(rule?.note ?? "");
   const [amount, setAmount] = useState(
     rule ? formatAmountInput(rule.amountCents, rule.currency) : "",
@@ -177,7 +181,7 @@ function RecurringForm({
     event.preventDefault();
     const amountCents = parseAmount(amount);
     if (amountCents === null) {
-      setError("Escribe un monto mayor que cero, por ejemplo 45.000.");
+      setError(t.recurringForm.invalidAmount);
       return;
     }
     const parsed = recurringInputSchema.safeParse({
@@ -190,7 +194,7 @@ function RecurringForm({
       endDate: endDate || null,
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Revisa los datos.");
+      setError(t.errors[toErrorCode(parsed.error.issues[0]?.message)]);
       return;
     }
     setError(null);
@@ -199,15 +203,15 @@ function RecurringForm({
         ? await updateRecurring(rule.id, parsed.data)
         : await createRecurring(parsed.data);
       if (!result.ok) {
-        setError(result.message);
+        setError(t.errors[result.error]);
         return;
       }
       toast.success(
         rule
-          ? "Recurrente guardado"
+          ? t.recurringForm.saved
           : result.generated
-            ? `Recurrente creado · ${result.generated} ${result.generated === 1 ? "movimiento añadido" : "movimientos añadidos"}`
-            : "Recurrente creado",
+            ? t.recurringForm.createdWith(result.generated)
+            : t.recurringForm.created,
       );
       onDone();
     });
@@ -218,18 +222,18 @@ function RecurringForm({
     startTransition(async () => {
       const result = await deleteRecurring(rule.id);
       if (!result.ok) {
-        setError(result.message);
+        setError(t.errors[result.error]);
         return;
       }
       onDone();
-      toast(`${rule.note} eliminado`, {
-        description: "Los movimientos ya creados se conservan.",
+      toast(t.recurringForm.deleted(rule.note), {
+        description: t.recurringForm.keptTransactions,
         duration: 8000,
         action: {
-          label: "Deshacer",
+          label: t.common.undo,
           onClick: async () => {
             const restored = await restoreRecurring(result.data);
-            if (!restored.ok) toast.error(restored.message);
+            if (!restored.ok) toast.error(t.errors[restored.error]);
           },
         },
       });
@@ -239,18 +243,20 @@ function RecurringForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold">Nombre</span>
+        <span className="text-sm font-semibold">{t.recurringForm.name}</span>
         <Input
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={200}
-          placeholder="Alquiler, Netflix, Sueldo…"
+          placeholder={t.recurringForm.namePlaceholder}
           className="h-11"
         />
       </label>
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Monto</span>
+          <span className="text-sm font-semibold">
+            {t.recurringForm.amount}
+          </span>
           <AmountInput
             value={amount}
             onChange={setAmount}
@@ -259,7 +265,9 @@ function RecurringForm({
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-semibold">Moneda</span>
+          <span className="text-sm font-semibold">
+            {t.recurringForm.currency}
+          </span>
           <CurrencySelect
             value={currencyCode}
             onChange={setCurrencyCode}
@@ -269,13 +277,15 @@ function RecurringForm({
         </label>
       </div>
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold">Categoría</span>
+        <span className="text-sm font-semibold">
+          {t.recurringForm.category}
+        </span>
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           className={selectClassName}
         >
-          <option value="">Sin categoría</option>
+          <option value="">{t.common.uncategorized}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.emoji} {c.name}
@@ -285,7 +295,9 @@ function RecurringForm({
       </label>
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Se repite</span>
+          <span className="text-sm font-semibold">
+            {t.recurringForm.repeats}
+          </span>
           <select
             value={frequency}
             onChange={(e) =>
@@ -296,13 +308,13 @@ function RecurringForm({
           >
             {FREQUENCIES.map((f) => (
               <option key={f} value={f}>
-                {FREQUENCY_LABELS[f]}
+                {t.recurringForm.frequency[f]}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1.5">
-          <span className="text-sm font-semibold">Desde</span>
+          <span className="text-sm font-semibold">{t.recurringForm.from}</span>
           <Input
             type="date"
             value={startDate}
@@ -314,11 +326,11 @@ function RecurringForm({
       </div>
       <p className="-mt-2 text-xs text-muted-foreground">
         {describeRecurrence(frequency, startDate)}
-        {rule && ". Para cambiar la frecuencia o el inicio, crea uno nuevo."}
+        {rule && t.recurringForm.lockedHint}
       </p>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="recurring-end" className="text-sm font-semibold">
-          Hasta (opcional)
+          {t.recurringForm.until}
         </label>
         <div className="flex gap-2">
           <Input
@@ -335,7 +347,7 @@ function RecurringForm({
               type="button"
               variant="outline"
               size="icon"
-              aria-label="Quitar fecha de fin"
+              aria-label={t.recurringForm.clearEnd}
               onClick={() => setEndDate("")}
               className="size-11 shrink-0"
             >
@@ -345,7 +357,7 @@ function RecurringForm({
         </div>
         {!endDate && (
           <span className="text-xs text-muted-foreground">
-            Sin fecha de fin: se repite hasta que lo borres.
+            {t.recurringForm.noEnd}
           </span>
         )}
       </div>
@@ -357,9 +369,9 @@ function RecurringForm({
       )}
 
       <FormFooter
-        submitLabel={rule ? "Guardar cambios" : "Crear recurrente"}
+        submitLabel={rule ? t.common.saveChanges : t.recurringForm.create}
         pending={pending}
-        deleteLabel="Eliminar recurrente"
+        deleteLabel={t.recurringForm.delete}
         onDelete={rule ? remove : undefined}
       />
     </form>

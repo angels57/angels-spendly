@@ -1,14 +1,18 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
-import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
 import Image from "next/image";
+import { getDictionary } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Entrar" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).meta.signIn };
+}
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: PageProps<"/[lang]/login">) {
+  const t = await getDictionary();
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8 px-4 py-10">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -21,7 +25,7 @@ export default function LoginPage({
           className="rounded-2xl shadow-lg"
         />
         <h1 className="text-3xl font-extrabold tracking-tight">{APP_NAME}</h1>
-        <p className="text-muted-foreground">{APP_TAGLINE}</p>
+        <p className="text-muted-foreground">{t.meta.tagline}</p>
       </div>
       <Suspense>
         <LoginFormWithParams searchParams={searchParams} />

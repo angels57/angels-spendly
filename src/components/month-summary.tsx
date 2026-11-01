@@ -14,16 +14,18 @@ import {
   type CurrencyTotals,
   type CurrencyCode,
 } from "@/lib/money";
+import { getDictionary } from "@/i18n/server";
 
 const MAX_BARS = 5;
 
-export function MonthSummary({
+export async function MonthSummary({
   transactions,
   currency,
 }: {
   transactions: TransactionRow[];
   currency: CurrencyCode;
 }) {
+  const t = await getDictionary();
   let spent = 0;
   let income = 0;
   const byCategory = new Map<
@@ -35,21 +37,21 @@ export function MonthSummary({
   // principal; el resto se muestra aparte.
   const others = totalsByCurrency(transactions, currency).slice(1);
 
-  for (const t of transactions) {
-    if (t.currency !== currency) continue;
-    if (t.category?.kind === "income") {
-      income += t.amountCents;
+  for (const tx of transactions) {
+    if (tx.currency !== currency) continue;
+    if (tx.category?.kind === "income") {
+      income += tx.amountCents;
       continue;
     }
-    spent += t.amountCents;
-    const key = t.category?.name ?? "Sin categoría";
+    spent += tx.amountCents;
+    const key = tx.category?.name ?? t.common.uncategorized;
     const entry = byCategory.get(key) ?? {
       name: key,
-      emoji: t.category?.emoji ?? "💸",
-      color: t.category?.color ?? NO_CATEGORY_COLOR,
+      emoji: tx.category?.emoji ?? "💸",
+      color: tx.category?.color ?? NO_CATEGORY_COLOR,
       cents: 0,
     };
-    entry.cents += t.amountCents;
+    entry.cents += tx.amountCents;
     byCategory.set(key, entry);
   }
 
@@ -62,14 +64,14 @@ export function MonthSummary({
     <Card>
       <CardHeader>
         <CardDescription className="first-letter:uppercase">
-          Gastado en {monthLabel()}
+          {t.home.spentIn(monthLabel())}
         </CardDescription>
         <CardTitle className="text-4xl font-extrabold tracking-tight">
           {formatMoney(spent, currency)}
         </CardTitle>
         {income > 0 && (
           <p className="text-sm font-semibold text-emerald-600">
-            +{formatMoney(income, currency)} de ingresos
+            {t.home.income(formatMoney(income, currency))}
           </p>
         )}
         {others.length > 0 && <OtherCurrencies totals={others} />}
@@ -77,7 +79,7 @@ export function MonthSummary({
       <CardContent>
         {bars.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            Aún no hay gastos este mes. Escribe el primero abajo 👇
+            {t.home.empty}
           </p>
         ) : (
           <div className="flex h-44 items-end justify-center gap-3">
@@ -111,7 +113,12 @@ export function MonthSummary({
 }
 
 /** "Además: US$ 20,00 · +12,00 €" */
-export function OtherCurrencies({ totals }: { totals: CurrencyTotals[] }) {
+export async function OtherCurrencies({
+  totals,
+}: {
+  totals: CurrencyTotals[];
+}) {
+  const t = await getDictionary();
   const parts = totals.flatMap((t) => [
     ...(t.spentCents > 0 ? [formatMoney(t.spentCents, t.currency)] : []),
     ...(t.incomeCents > 0
@@ -119,6 +126,8 @@ export function OtherCurrencies({ totals }: { totals: CurrencyTotals[] }) {
       : []),
   ]);
   return (
-    <p className="text-sm text-muted-foreground">Además: {parts.join(" · ")}</p>
+    <p className="text-sm text-muted-foreground">
+      {t.home.otherCurrencies(parts.join(" · "))}
+    </p>
   );
 }

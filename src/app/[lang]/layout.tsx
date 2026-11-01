@@ -5,11 +5,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { KeyboardInset } from "@/components/keyboard-inset";
 import { OfflineBanner, ServiceWorkerRegistration } from "@/components/pwa";
 import "../globals.css";
-import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME, APP_SHORT_NAME } from "@/lib/brand";
 import { LOCALES } from "@/i18n/config";
-import { DICTIONARIES } from "@/i18n/dictionaries";
 import { I18nProvider } from "@/i18n/provider";
-import { getLocale } from "@/i18n/server";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -21,22 +20,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  // Las páginas solo ponen su nombre: "Movimientos · Spendly".
-  title: { default: APP_NAME, template: `%s · ${APP_SHORT_NAME}` },
-  description: APP_TAGLINE,
-  applicationName: APP_NAME,
-  icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/apple-touch-icon.png",
-  },
-  // iOS: pantalla completa al abrirla desde la pantalla de inicio.
-  appleWebApp: {
-    capable: true,
-    title: APP_SHORT_NAME,
-    statusBarStyle: "default",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDictionary();
+  return {
+    // Las páginas solo ponen su nombre: "Movimientos · Spendly".
+    title: { default: APP_NAME, template: `%s · ${APP_SHORT_NAME}` },
+    description: t.meta.tagline,
+    applicationName: APP_NAME,
+    icons: {
+      icon: "/icons/icon-192.png",
+      apple: "/icons/apple-touch-icon.png",
+    },
+    // iOS: pantalla completa al abrirla desde la pantalla de inicio.
+    appleWebApp: {
+      capable: true,
+      title: APP_SHORT_NAME,
+      statusBarStyle: "default",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   // Android: el teclado encoge la página en vez de taparla, así el quick add
@@ -66,7 +68,7 @@ export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <I18nProvider locale={locale} dictionary={DICTIONARIES[locale]}>
+          <I18nProvider locale={locale}>
             <OfflineBanner />
             {children}
             {/* Arriba: abajo taparía el quick add en el celular. */}
