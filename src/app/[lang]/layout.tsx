@@ -3,7 +3,11 @@ import { Geist_Mono, Nunito } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardInset } from "@/components/keyboard-inset";
-import { OfflineBanner, ServiceWorkerRegistration } from "@/components/pwa";
+import {
+  OfflineBanner,
+  ServiceWorkerRegistration,
+  TimeZoneSync,
+} from "@/components/pwa";
 import "../globals.css";
 import { APP_NAME, APP_SHORT_NAME } from "@/lib/brand";
 import { LOCALES } from "@/i18n/config";
@@ -70,6 +74,7 @@ export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <I18nProvider locale={locale}>
             <OfflineBanner />
+            <TimeZoneSync />
             {children}
             {/* Arriba: abajo taparía el quick add en el celular. */}
             <Toaster position="top-center" />

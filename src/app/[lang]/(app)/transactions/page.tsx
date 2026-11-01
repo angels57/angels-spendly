@@ -16,6 +16,8 @@ import {
   monthTitle,
   parseMonthParam,
 } from "@/lib/dates";
+import { toISODate } from "@/lib/parser";
+import { userNow } from "@/lib/today";
 import { OtherCurrencies } from "@/components/month-summary";
 import { formatMoney, totalsByCurrency } from "@/lib/money";
 import { getDictionary, getLocalHref, getLocale } from "@/i18n/server";
@@ -41,8 +43,8 @@ async function TransactionsView({
   const locale = await getLocale();
   // El mes por defecto depende de la fecha actual.
   await connection();
-  const params = await searchParams;
-  const month = parseMonthParam(params.month);
+  const [params, now] = await Promise.all([searchParams, userNow()]);
+  const month = parseMonthParam(params.month, now);
   const q = typeof params.q === "string" ? params.q.trim().slice(0, 100) : "";
   // Un id inválido haría fallar la consulta: se ignora.
   const category =
@@ -63,7 +65,7 @@ async function TransactionsView({
   const [{ spentCents: spent, incomeCents: income }, ...others] =
     totalsByCurrency(transactions, list.currency);
 
-  const current = parseMonthParam(undefined);
+  const current = parseMonthParam(undefined, now);
   const next = addMonths(month, 1);
   const filtered = Boolean(q || category);
 
@@ -119,6 +121,7 @@ async function TransactionsView({
         transactions={transactions}
         categories={categories}
         currency={list.currency}
+        today={toISODate(now)}
         empty={
           <p className="py-10 text-center text-sm text-muted-foreground">
             {filtered ? t.transactions.noMatches : t.transactions.emptyMonth}

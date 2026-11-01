@@ -41,7 +41,20 @@ export const categoryInputSchema = z.object({
 
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
-export const FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
+export const FREQUENCIES = [
+  "weekly",
+  "semimonthly",
+  "monthly",
+  "yearly",
+] as const;
+
+export type Frequency = (typeof FREQUENCIES)[number];
+
+/** Último día que puede ser el primero de la quincena: así los dos días
+ * nunca coinciden, ni en febrero. */
+export const SEMIMONTHLY_FIRST_DAY_MAX = 27;
+/** El segundo día 31 significa «el último día del mes». */
+export const LAST_DAY_OF_MONTH = 31;
 
 export const recurringInputSchema = z
   .object({
@@ -52,7 +65,22 @@ export const recurringInputSchema = z
     frequency: z.enum(FREQUENCIES),
     startDate: z.iso.date(),
     endDate: z.iso.date().nullable(),
+    /** Días del mes de la quincena; null en las demás frecuencias. */
+    firstDay: z.int().min(1).max(SEMIMONTHLY_FIRST_DAY_MAX).nullable(),
+    secondDay: z.int().min(2).max(LAST_DAY_OF_MONTH).nullable(),
   })
+  .refine(
+    (r) =>
+      r.frequency === "semimonthly"
+        ? r.firstDay !== null &&
+          r.secondDay !== null &&
+          r.secondDay > r.firstDay
+        : r.firstDay === null && r.secondDay === null,
+    {
+      message: "semimonthly_days_order",
+      path: ["secondDay"],
+    },
+  )
   .refine((r) => !r.endDate || r.endDate >= r.startDate, {
     message: "end_before_start",
     path: ["endDate"],

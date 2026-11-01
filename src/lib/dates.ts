@@ -7,6 +7,50 @@ export function dateLocale(locale: Locale) {
   return locale === "en" ? "en-US" : "es";
 }
 
+// Zona horaria del usuario. El servidor corre en UTC: sin ella, en
+// Colombia a las 7 de la noche del 31 de octubre ya sería noviembre.
+export const TIME_ZONE_COOKIE = "tz";
+/** Hasta que el navegador mande la suya. */
+export const DEFAULT_TIME_ZONE = "America/Bogota";
+
+export function isValidTimeZone(timeZone: string) {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * La hora de `timeZone` como Date con esa hora local, para usar
+ * getDate()/getMonth() igual en el servidor (UTC) y en el navegador.
+ */
+export function nowInTimeZone(timeZone: string, now = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    })
+      .formatToParts(now)
+      .map((p) => [p.type, Number(p.value)]),
+  );
+  return new Date(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+}
+
 // Fechas de la base (YYYY-MM-DD) como Date local, sin desfase de zona.
 export function fromISODate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);

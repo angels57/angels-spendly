@@ -21,9 +21,12 @@ const MAX_BARS = 5;
 export async function MonthSummary({
   transactions,
   currency,
+  now,
 }: {
   transactions: TransactionRow[];
   currency: CurrencyCode;
+  /** Ahora, en la zona horaria del usuario. */
+  now: Date;
 }) {
   const t = await getDictionary();
   const locale = await getLocale();
@@ -65,7 +68,7 @@ export async function MonthSummary({
     <Card>
       <CardHeader>
         <CardDescription className="first-letter:uppercase">
-          {t.home.spentIn(monthLabel(locale))}
+          {t.home.spentIn(monthLabel(locale, now))}
         </CardDescription>
         <CardTitle className="text-4xl font-extrabold tracking-tight">
           {formatMoney(spent, currency, locale)}

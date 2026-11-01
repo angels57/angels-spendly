@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { Share, WifiOff, X } from "lucide-react";
 import { useOffline } from "next/offline";
 import { Button } from "@/components/ui/button";
 import { APP_SHORT_NAME } from "@/lib/brand";
 import { useT } from "@/i18n/provider";
+import { saveTimeZone } from "@/app/time-zone";
 
 /** Registra el service worker (solo en producción: en dev rompería el HMR). */
 export function ServiceWorkerRegistration() {
@@ -18,6 +20,39 @@ export function ServiceWorkerRegistration() {
         // Sin service worker la app funciona igual, solo sin modo offline.
       });
   }, []);
+  return null;
+}
+
+const TIME_ZONE_SYNCED_KEY = "spendly:time-zone-synced";
+
+/**
+ * Manda la zona horaria del dispositivo al servidor (cookie y perfil), una
+ * vez por sesión del navegador o cuando cambia. Si la cookie era otra (o es
+ * la primera visita), vuelve a pedir la página con la fecha correcta.
+ */
+export function TimeZoneSync() {
+  const router = useRouter();
+  useEffect(() => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!timeZone) return;
+    try {
+      if (sessionStorage.getItem(TIME_ZONE_SYNCED_KEY) === timeZone) return;
+    } catch {
+      // Sin almacenamiento: se sincroniza en cada carga.
+    }
+    saveTimeZone(timeZone)
+      .then((changed) => {
+        try {
+          sessionStorage.setItem(TIME_ZONE_SYNCED_KEY, timeZone);
+        } catch {
+          // Sin almacenamiento: se volverá a mandar en la próxima carga.
+        }
+        if (changed) router.refresh();
+      })
+      .catch(() => {
+        // Sin conexión: se reintenta en la próxima carga.
+      });
+  }, [router]);
   return null;
 }
 

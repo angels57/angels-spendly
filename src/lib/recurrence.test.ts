@@ -21,4 +21,28 @@ describe("describeRecurrence", () => {
   ] as const)("en: %s desde %s → %s", (frequency, start, text) => {
     expect(describeRecurrence(frequency, start, "en")).toBe(text);
   });
+
+  it.each([
+    [15, 31, "Cada quincena, el 15 y el último día"],
+    [1, 15, "Cada quincena, los días 1 y 15"],
+  ])("es: quincena %i y %i → %s", (firstDay, secondDay, text) => {
+    expect(
+      describeRecurrence("semimonthly", "2026-11-01", "es", {
+        firstDay,
+        secondDay,
+      }),
+    ).toBe(text);
+  });
+
+  it.each([
+    [15, 31, "Twice a month, on the 15th and the last day"],
+    [1, 15, "Twice a month, on the 1st and 15th"],
+  ])("en: quincena %i y %i → %s", (firstDay, secondDay, text) => {
+    expect(
+      describeRecurrence("semimonthly", "2026-11-01", "en", {
+        firstDay,
+        secondDay,
+      }),
+    ).toBe(text);
+  });
 });

@@ -21,7 +21,7 @@ import type { Category, TransactionRow } from "@/lib/data";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { useT, useLocale } from "@/i18n/provider";
-import { dayLabel } from "@/lib/dates";
+import { dayLabel, fromISODate } from "@/lib/dates";
 
 export type TransactionGroup = {
   day: string;
@@ -32,10 +32,13 @@ export function TransactionGroups({
   groups,
   categories,
   currency,
+  today,
 }: {
   groups: TransactionGroup[];
   categories: Category[];
   currency: CurrencyCode;
+  /** Hoy (YYYY-MM-DD) en la zona horaria del usuario: "Today" / "Yesterday". */
+  today: string;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -75,7 +78,7 @@ export function TransactionGroups({
         {groups.map((group) => (
           <div key={group.day} className="flex flex-col gap-1">
             <h2 className="px-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              {dayLabel(group.day, locale)}
+              {dayLabel(group.day, locale, fromISODate(today))}
             </h2>
             <ul className="flex flex-col">
               {group.items.map((t) => (

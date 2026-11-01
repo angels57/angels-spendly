@@ -8,6 +8,8 @@ export const es: Dictionary = {
     categories: "Categorías",
   },
   errors: {
+    semimonthly_days_order:
+      "El segundo día de la quincena debe ser posterior al primero.",
     check_amount_date: "Revisa el monto y la fecha.",
     save_failed: "No se pudo guardar. Inténtalo de nuevo.",
     invalid_transaction: "Movimiento no válido.",
@@ -294,10 +296,16 @@ export const es: Dictionary = {
     repeats: "Se repite",
     frequency: {
       weekly: "Cada semana",
+      semimonthly: "Cada quincena",
       monthly: "Cada mes",
       yearly: "Cada año",
     },
     from: "Desde",
+    shortMonths: (day: number, lastDay: string) =>
+      `. Los meses sin día ${day}, ${lastDay}`,
+    firstDay: "Primer día",
+    secondDay: "Segundo día",
+    lastDay: "Último día",
     lockedHint: ". Para cambiar la frecuencia o el inicio, crea uno nuevo.",
     until: "Hasta (opcional)",
     clearEnd: "Quitar fecha de fin",

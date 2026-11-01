@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { asCurrencyCode, toCents, type CurrencyCode } from "@/lib/money";
 import { localizePath } from "@/i18n/config";
 import { getRequestLocale } from "@/i18n/request";
+import type { Frequency } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -54,9 +55,12 @@ export type RecurringRow = {
   note: string;
   categoryId: string | null;
   category: Pick<Category, "name" | "emoji" | "color" | "kind"> | null;
-  frequency: "weekly" | "monthly" | "yearly";
+  frequency: Frequency;
   startDate: string;
   endDate: string | null;
+  /** Días del mes de la quincena (solo semimonthly). */
+  firstDay: number | null;
+  secondDay: number | null;
   /** Próxima fecha, o null si ya terminó. */
   nextRun: string | null;
 };
@@ -168,7 +172,7 @@ export async function getRecurring(listId: string): Promise<RecurringRow[]> {
   const { data, error } = await supabase
     .from("recurring_transactions")
     .select(
-      "id, amount, currency, note, category_id, frequency, start_date, end_date, next_run, category:categories!recurring_transactions_list_id_category_id_fkey(name, emoji, color, kind)",
+      "id, amount, currency, note, category_id, frequency, start_date, end_date, first_day, second_day, next_run, category:categories!recurring_transactions_list_id_category_id_fkey(name, emoji, color, kind)",
     )
     .eq("list_id", listId)
     .order("next_run");
@@ -183,6 +187,8 @@ export async function getRecurring(listId: string): Promise<RecurringRow[]> {
     frequency: r.frequency,
     startDate: r.start_date,
     endDate: r.end_date,
+    firstDay: r.first_day,
+    secondDay: r.second_day,
     nextRun: r.end_date && r.next_run > r.end_date ? null : r.next_run,
   }));
 }

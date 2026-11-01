@@ -11,11 +11,14 @@ export function TransactionList({
   transactions,
   categories,
   currency,
+  today,
   empty,
 }: {
   transactions: TransactionRow[];
   categories: Category[];
   currency: CurrencyCode;
+  /** Hoy (YYYY-MM-DD) en la zona horaria del usuario, para «Hoy» y «Ayer». */
+  today: string;
   empty?: React.ReactNode;
 }) {
   if (transactions.length === 0) return empty ?? null;
@@ -32,6 +35,7 @@ export function TransactionList({
 
   return (
     <TransactionGroups
+      today={today}
       groups={[...groups.values()]}
       categories={categories}
       currency={currency}

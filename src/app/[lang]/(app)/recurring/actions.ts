@@ -29,6 +29,21 @@ export async function createRecurring(input: RecurringInput): Promise<Result> {
 
   const list = await getActiveList();
   const supabase = await createClient();
+  // La primera fecha la calcula la base, con la misma regla que las demás:
+  // en una quincena puede no ser la de inicio.
+  const { data: firstRun, error: firstRunError } = await supabase.rpc(
+    "recurrence_date",
+    {
+      p_start: parsed.data.startDate,
+      p_frequency: parsed.data.frequency,
+      p_n: 0,
+      p_first_day: parsed.data.firstDay ?? undefined,
+      p_second_day: parsed.data.secondDay ?? undefined,
+    },
+  );
+  if (firstRunError) {
+    return { ok: false, error: "recurring_create_failed" };
+  }
   const { error } = await supabase.from("recurring_transactions").insert({
     list_id: list.id,
     category_id: parsed.data.categoryId,
@@ -38,7 +53,9 @@ export async function createRecurring(input: RecurringInput): Promise<Result> {
     frequency: parsed.data.frequency,
     start_date: parsed.data.startDate,
     end_date: parsed.data.endDate,
-    next_run: parsed.data.startDate,
+    first_day: parsed.data.firstDay,
+    second_day: parsed.data.secondDay,
+    next_run: firstRun,
   });
   if (error) return { ok: false, error: "recurring_create_failed" };
 
@@ -133,7 +150,7 @@ export async function deleteRecurring(
     supabase
       .from("recurring_transactions")
       .select(
-        "amount, currency, category_id, note, frequency, start_date, end_date, generated_count, next_run",
+        "amount, currency, category_id, note, frequency, start_date, end_date, first_day, second_day, generated_count, next_run",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -166,6 +183,8 @@ export async function deleteRecurring(
         frequency: r.frequency,
         startDate: r.start_date,
         endDate: r.end_date,
+        firstDay: r.first_day,
+        secondDay: r.second_day,
       },
       generatedCount: r.generated_count,
       nextRun: r.next_run,
@@ -203,6 +222,8 @@ export async function restoreRecurring(
     frequency: input.frequency,
     start_date: input.startDate,
     end_date: input.endDate,
+    first_day: input.firstDay,
+    second_day: input.secondDay,
     generated_count: generatedCount,
     next_run: nextRun,
   });

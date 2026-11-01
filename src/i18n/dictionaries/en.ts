@@ -10,6 +10,7 @@ export const en = {
     categories: "Categories",
   },
   errors: {
+    semimonthly_days_order: "The second day must be after the first.",
     check_amount_date: "Check the amount and the date.",
     save_failed: "Couldn't save. Try again.",
     invalid_transaction: "That transaction isn't valid.",
@@ -294,10 +295,16 @@ export const en = {
     repeats: "Repeats",
     frequency: {
       weekly: "Every week",
+      semimonthly: "Twice a month",
       monthly: "Every month",
       yearly: "Every year",
     },
     from: "From",
+    shortMonths: (day: number, lastDay: string) =>
+      `. In months without a day ${day}: ${lastDay}`,
+    firstDay: "First day",
+    secondDay: "Second day",
+    lastDay: "Last day",
     lockedHint: ". To change the frequency or start, create a new one.",
     until: "Until (optional)",
     clearEnd: "Remove end date",

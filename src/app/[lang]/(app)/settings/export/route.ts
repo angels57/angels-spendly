@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE, hasLocale, type Locale } from "@/i18n/config";
 import { DICTIONARIES } from "@/i18n/dictionaries";
 import { createClient } from "@/lib/supabase/server";
 import { toISODate } from "@/lib/parser";
+import { userNow } from "@/lib/today";
 
 // Descarga de todos los movimientos de la lista en CSV, en el idioma de la
 // URL y con el formato que espera Excel en ese idioma: en español ";" y coma
@@ -83,7 +84,7 @@ export async function GET(
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="spendly-${toISODate(new Date())}.csv"`,
+      "Content-Disposition": `attachment; filename="spendly-${toISODate(await userNow())}.csv"`,
       "Cache-Control": "no-store",
     },
   });
