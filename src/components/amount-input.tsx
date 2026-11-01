@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { currencyDecimals, formatAmountTyping } from "@/lib/money";
+import { useLocale } from "@/i18n/provider";
 
 /**
  * Campo de monto que se formatea mientras se escribe ("45000" → "45.000").
@@ -17,6 +18,7 @@ export function AmountInput({
   onChange: (value: string) => void;
   currency: string;
 } & Omit<React.ComponentProps<typeof Input>, "value" | "onChange">) {
+  const locale = useLocale();
   const decimals = currencyDecimals(currency);
   return (
     <Input
@@ -25,7 +27,9 @@ export function AmountInput({
       autoComplete="off"
       {...props}
       value={value}
-      onChange={(e) => onChange(formatAmountTyping(e.target.value, currency))}
+      onChange={(e) =>
+        onChange(formatAmountTyping(e.target.value, currency, locale))
+      }
     />
   );
 }

@@ -11,7 +11,7 @@ import { dayLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseExpense } from "@/lib/parser";
-import { useT } from "@/i18n/provider";
+import { useT, useLocale } from "@/i18n/provider";
 
 // Si el texto no indica categoría: la de "otros" (nombre por idioma).
 const FALLBACK_CATEGORIES = ["Other", "Otros"];
@@ -33,6 +33,7 @@ export function QuickAdd({
   onOptimistic?: (transaction: TransactionRow) => void;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [text, setText] = useState("");
   // La categoría que elige el usuario a mano gana a la que adivina el parser.
   const [pickedCategoryId, setPickedCategoryId] = useState<string | null>(null);
@@ -117,7 +118,7 @@ export function QuickAdd({
       toast.success(
         t.quickAdd.saved(
           category?.emoji ?? "💸",
-          formatMoney(amountCents, entry),
+          formatMoney(amountCents, entry, locale),
         ),
       );
     });
@@ -142,11 +143,11 @@ export function QuickAdd({
           >
             {parsed.amountCents === null
               ? t.quickAdd.amountUnknown
-              : `${category?.kind === "income" ? "+" : ""}${formatMoney(parsed.amountCents, entryCurrency)}`}
+              : `${category?.kind === "income" ? "+" : ""}${formatMoney(parsed.amountCents, entryCurrency, locale)}`}
           </span>
           <span className="flex h-9 items-center gap-1 rounded-full bg-muted px-3">
             <CalendarDays className="size-3.5" />
-            {dayLabel(parsed.date)}
+            {dayLabel(parsed.date, locale)}
           </span>
           <label className="relative">
             <span className="sr-only">{t.quickAdd.category}</span>
@@ -177,8 +178,12 @@ export function QuickAdd({
               }`}
             >
               {remainingAfter < 0
-                ? t.quickAdd.overBudget(formatMoney(-remainingAfter, currency))
-                : t.quickAdd.willRemain(formatMoney(remainingAfter, currency))}
+                ? t.quickAdd.overBudget(
+                    formatMoney(-remainingAfter, currency, locale),
+                  )
+                : t.quickAdd.willRemain(
+                    formatMoney(remainingAfter, currency, locale),
+                  )}
             </span>
           )}
         </div>

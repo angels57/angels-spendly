@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CurrencySelect } from "@/components/currency-select";
 import { setListCurrency } from "@/app/[lang]/(app)/actions";
-import { CURRENCIES, type CurrencyCode } from "@/lib/money";
+import type { CurrencyCode } from "@/lib/money";
 import { useT } from "@/i18n/provider";
 
 /** Moneda principal de la lista: la de totales, barras y presupuestos. */
@@ -23,7 +23,7 @@ export function CurrencySettings({ currency }: { currency: CurrencyCode }) {
         toast.error(t.errors[result.error]);
         return;
       }
-      toast.success(t.currency.mainSet(CURRENCIES[next].name));
+      toast.success(t.currency.mainSet(t.currencies[next]));
     });
   }
 

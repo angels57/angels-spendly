@@ -1,18 +1,36 @@
 import { NextResponse } from "next/server";
+import { DEFAULT_LOCALE, hasLocale, type Locale } from "@/i18n/config";
+import { DICTIONARIES } from "@/i18n/dictionaries";
 import { createClient } from "@/lib/supabase/server";
 import { toISODate } from "@/lib/parser";
 
-// Descarga de todos los movimientos de la lista en CSV, pensado para Excel
-// en español: separador ";" y coma decimal, con BOM para que respete las
-// tildes. RLS limita la consulta a las listas del usuario.
+// Descarga de todos los movimientos de la lista en CSV, en el idioma de la
+// URL y con el formato que espera Excel en ese idioma: en español ";" y coma
+// decimal; en inglés "," y punto. Con BOM para que respete las tildes. RLS
+// limita la consulta a las listas del usuario.
 
 const PAGE = 1000; // máximo de filas por consulta en Supabase
 
-export async function GET() {
+const FORMAT: Record<Locale, { separator: string; decimal: string }> = {
+  en: { separator: ",", decimal: "." },
+  es: { separator: ";", decimal: "," },
+};
+
+// Los Route Handlers no tienen root params: el idioma llega en `params`.
+export async function GET(
+  _request: Request,
+  { params }: RouteContext<"/[lang]/settings/export">,
+) {
+  const { lang } = await params;
+  const locale = hasLocale(lang) ? lang : DEFAULT_LOCALE;
+  const t = DICTIONARIES[locale].csv;
+  const { separator, decimal } = FORMAT[locale];
+  const uncategorized = DICTIONARIES[locale].common.uncategorized;
+
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
   if (!auth?.claims) {
-    return NextResponse.json({ error: "Sin sesión" }, { status: 401 });
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const { data: list, error: listError } = await supabase
@@ -22,11 +40,11 @@ export async function GET() {
     .limit(1)
     .single();
   if (listError) {
-    return NextResponse.json({ error: "Sin lista" }, { status: 404 });
+    return NextResponse.json({ error: "no_list" }, { status: 404 });
   }
 
   const rows: string[][] = [
-    ["Fecha", "Nota", "Categoría", "Tipo", "Monto", "Moneda", "Origen"],
+    [t.date, t.note, t.category, t.type, t.amount, t.currency, t.source],
   ];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
@@ -39,28 +57,29 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .range(from, from + PAGE - 1);
     if (error) {
-      return NextResponse.json(
-        { error: "No se pudo exportar" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "export_failed" }, { status: 500 });
     }
-    for (const t of data) {
-      const income = t.category?.kind === "income";
+    for (const tx of data) {
+      const income = tx.category?.kind === "income";
       rows.push([
-        t.occurred_on,
-        t.note,
-        t.category?.name ?? "Sin categoría",
-        income ? "Ingreso" : "Gasto",
+        tx.occurred_on,
+        tx.note,
+        tx.category?.name ?? uncategorized,
+        income ? t.income : t.expense,
         // Gastos en negativo: así una suma da el balance.
-        formatAmount(income ? t.amount : -t.amount),
-        t.currency,
-        SOURCE_LABELS[t.source] ?? t.source,
+        (income ? tx.amount : -tx.amount).toFixed(2).replace(".", decimal),
+        tx.currency,
+        t.sources[tx.source] ?? tx.source,
       ]);
     }
     if (data.length < PAGE) break;
   }
 
-  const csv = "﻿" + rows.map((r) => r.map(csvCell).join(";")).join("\r\n");
+  const csv =
+    "\uFEFF" +
+    rows
+      .map((r) => r.map((cell) => csvCell(cell, separator)).join(separator))
+      .join("\r\n");
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
@@ -70,23 +89,12 @@ export async function GET() {
   });
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  manual: "Manual",
-  text: "Quick add",
-  voice: "Voz",
-  ai: "IA",
-  recurring: "Recurrente",
-};
-
-function formatAmount(value: number) {
-  return value.toFixed(2).replace(".", ",");
-}
-
 // Comillas si lleva separador, comillas o saltos de línea. Un "=", "+",
 // "-" o "@" al inicio de un texto se neutraliza para que Excel no lo
 // ejecute como fórmula.
-function csvCell(value: string) {
+function csvCell(value: string, separator: string) {
   let text = value;
   if (/^[=+\-@]/.test(text) && !/^-?\d/.test(text)) text = `'${text}`;
-  return /[";\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  const needsQuotes = text.includes(separator) || /["\r\n]/.test(text);
+  return needsQuotes ? `"${text.replace(/"/g, '""')}"` : text;
 }

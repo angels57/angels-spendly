@@ -9,7 +9,7 @@ import type { Category } from "@/lib/data";
 import { formatAmountInput, type CurrencyCode } from "@/lib/money";
 import { parseAmount, toISODate } from "@/lib/parser";
 import type { TransactionInput } from "@/lib/schemas";
-import { useT } from "@/i18n/provider";
+import { useT, useLocale } from "@/i18n/provider";
 import type { ErrorCode } from "@/i18n/errors";
 
 type Result = { ok: true } | { ok: false; error: ErrorCode };
@@ -32,8 +32,11 @@ export function TransactionForm({
   onDelete?: () => Promise<void>;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [amount, setAmount] = useState(
-    initial ? formatAmountInput(initial.amountCents, initial.currency) : "",
+    initial
+      ? formatAmountInput(initial.amountCents, initial.currency, locale)
+      : "",
   );
   const [currencyCode, setCurrencyCode] = useState(
     initial?.currency ?? currency,

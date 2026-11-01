@@ -20,11 +20,11 @@ import {
 import type { Category, TransactionRow } from "@/lib/data";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
-import { useT } from "@/i18n/provider";
+import { useT, useLocale } from "@/i18n/provider";
+import { dayLabel } from "@/lib/dates";
 
 export type TransactionGroup = {
   day: string;
-  label: string;
   items: TransactionRow[];
 };
 
@@ -38,6 +38,7 @@ export function TransactionGroups({
   currency: CurrencyCode;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [editing, setEditing] = useState<TransactionRow | null>(null);
   // Solo una fila deslizada (abierta) a la vez.
   const [swipedId, setSwipedId] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function TransactionGroups({
     close();
     toast(
       t.transactionForm.deleted(
-        formatMoney(transaction.amountCents, transaction.currency),
+        formatMoney(transaction.amountCents, transaction.currency, locale),
       ),
       {
         // Más que los 4 s por defecto: da tiempo a pulsar "Deshacer".
@@ -70,11 +71,11 @@ export function TransactionGroups({
 
   return (
     <>
-      <section aria-label="Movimientos" className="flex flex-col gap-5">
+      <section aria-label={t.nav.transactions} className="flex flex-col gap-5">
         {groups.map((group) => (
           <div key={group.day} className="flex flex-col gap-1">
             <h2 className="px-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              {group.label}
+              {dayLabel(group.day, locale)}
             </h2>
             <ul className="flex flex-col">
               {group.items.map((t) => (
@@ -152,6 +153,7 @@ function TransactionItem({
   onSelect?: () => void;
 }) {
   const t = useT();
+  const locale = useLocale();
   const income = tx.category?.kind === "income";
   const title = tx.note || tx.category?.name || t.common.uncategorized;
   const showCategory =
@@ -203,7 +205,7 @@ function TransactionItem({
         className={`font-bold tabular-nums ${income ? "text-emerald-600" : ""}`}
       >
         {income ? "+" : "−"}
-        {formatMoney(tx.amountCents, tx.currency)}
+        {formatMoney(tx.amountCents, tx.currency, locale)}
       </span>
     </button>
   );

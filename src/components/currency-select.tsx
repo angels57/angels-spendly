@@ -1,5 +1,8 @@
+"use client";
+
 import { cn } from "cn";
-import { CURRENCIES, CURRENCY_CODES, type CurrencyCode } from "@/lib/money";
+import { CURRENCY_CODES, type CurrencyCode } from "@/lib/money";
+import { useT } from "@/i18n/provider";
 
 /** Selector de moneda. `compact` muestra solo el código ("COP"). */
 export function CurrencySelect({
@@ -14,6 +17,7 @@ export function CurrencySelect({
   compact?: boolean;
   className?: string;
 } & Omit<React.ComponentProps<"select">, "value" | "onChange">) {
+  const t = useT();
   return (
     <select
       value={value}
@@ -26,7 +30,7 @@ export function CurrencySelect({
     >
       {CURRENCY_CODES.map((code) => (
         <option key={code} value={code}>
-          {compact ? code : `${code} · ${CURRENCIES[code].name}`}
+          {compact ? code : `${code} · ${t.currencies[code]}`}
         </option>
       ))}
     </select>

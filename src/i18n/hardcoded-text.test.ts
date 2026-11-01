@@ -12,8 +12,6 @@ const ROOT = join(__dirname, "..");
 const SCANNED = ["app", "components"];
 const SKIPPED = [
   "components/ui/", // shadcn, sin textos propios
-  // Fase 2 (formatos): cabeceras y valores del CSV.
-  "app/[lang]/(app)/settings/export/route.ts",
 ];
 
 function sourceFiles(dir: string): string[] {

@@ -18,7 +18,7 @@ import {
 } from "@/lib/dates";
 import { OtherCurrencies } from "@/components/month-summary";
 import { formatMoney, totalsByCurrency } from "@/lib/money";
-import { getDictionary, getLocalHref } from "@/i18n/server";
+import { getDictionary, getLocalHref, getLocale } from "@/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getDictionary()).meta.transactions };
@@ -38,6 +38,7 @@ async function TransactionsView({
   searchParams,
 }: Pick<PageProps<"/[lang]/transactions">, "searchParams">) {
   const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
+  const locale = await getLocale();
   // El mes por defecto depende de la fecha actual.
   await connection();
   const params = await searchParams;
@@ -72,7 +73,7 @@ async function TransactionsView({
         // Al cambiar de mes o filtro desde fuera, el buscador se reinicia.
         key={`${monthParam(month)}|${category}`}
         filters={{ month: monthParam(month), q, category }}
-        monthTitle={monthTitle(month)}
+        monthTitle={monthTitle(month, locale)}
         prevMonth={monthParam(addMonths(month, -1))}
         nextMonth={next <= current ? monthParam(next) : null}
         categories={categories}
@@ -85,7 +86,7 @@ async function TransactionsView({
             <>
               {" · "}
               <span className="font-semibold text-foreground">
-                −{formatMoney(spent, list.currency)}
+                −{formatMoney(spent, list.currency, locale)}
               </span>
             </>
           )}
@@ -93,7 +94,7 @@ async function TransactionsView({
             <>
               {" · "}
               <span className="font-semibold text-emerald-600">
-                +{formatMoney(income, list.currency)}
+                +{formatMoney(income, list.currency, locale)}
               </span>
             </>
           )}

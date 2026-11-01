@@ -23,20 +23,29 @@ describe("money", () => {
     expect(() => toCents("abc")).toThrow();
   });
 
-  it("formatea cada moneda sin ambigüedad", () => {
+  it("en español, a la colombiana: $ solo es el peso colombiano", () => {
     // Intl separa el símbolo con un espacio no separable (U+00A0).
-    expect(formatMoney(1_200_000_00)).toBe("$ 1.200.000");
-    expect(formatMoney(1250, "USD")).toBe("US$ 12,50");
-    expect(formatMoney(72927, "EUR")).toBe("729,27 €");
-    expect(formatMoney(1250, "MXN")).toBe("MXN 12,50");
+    expect(formatMoney(1_200_000_00, "COP", "es")).toBe("$\u00a01.200.000");
+    expect(formatMoney(1250, "USD", "es")).toBe("US$\u00a012,50");
+    expect(formatMoney(72927, "EUR", "es")).toBe("729,27\u00a0€");
+    expect(formatMoney(1250, "MXN", "es")).toBe("MXN\u00a012,50");
+  });
+
+  it("en inglés, como en EE. UU.: símbolo solo si no es ambiguo", () => {
+    expect(formatMoney(1_200_000_00, "COP", "en")).toBe("COP\u00a01,200,000");
+    expect(formatMoney(1250, "USD", "en")).toBe("$12.50");
+    expect(formatMoney(72927, "EUR", "en")).toBe("€729.27");
+    expect(formatMoney(1250, "MXN", "en")).toBe("MX$12.50");
   });
 
   it("prepara el monto para un campo de texto", () => {
-    expect(formatAmountInput(1_200_000, "COP")).toBe("12.000");
-    expect(formatAmountInput(150_000_000, "COP")).toBe("1.500.000");
-    expect(formatAmountInput(1250, "USD")).toBe("12,50");
-    expect(formatAmountInput(123_450, "USD")).toBe("1.234,50");
-    expect(formatAmountInput(1250, "COP")).toBe("12,50");
+    expect(formatAmountInput(1_200_000, "COP", "es")).toBe("12.000");
+    expect(formatAmountInput(150_000_000, "COP", "es")).toBe("1.500.000");
+    expect(formatAmountInput(1250, "USD", "es")).toBe("12,50");
+    expect(formatAmountInput(123_450, "USD", "es")).toBe("1.234,50");
+    expect(formatAmountInput(1250, "COP", "es")).toBe("12,50");
+    expect(formatAmountInput(150_000_000, "COP", "en")).toBe("1,500,000");
+    expect(formatAmountInput(123_450, "USD", "en")).toBe("1,234.50");
   });
 
   it.each([
@@ -52,8 +61,22 @@ describe("money", () => {
     [",5", "USD", "0,5"],
     ["1.2345", "USD", "12.345"],
     ["$ 12a", "USD", "12"],
-  ])("al escribir %s en %s → %s", (raw, currency, text) => {
-    expect(formatAmountTyping(raw, currency)).toBe(text);
+  ])("es: al escribir %s en %s → %s", (raw, currency, text) => {
+    expect(formatAmountTyping(raw, currency, "es")).toBe(text);
+  });
+
+  it.each([
+    ["45000", "COP", "45,000"],
+    ["1,5000", "COP", "15,000"],
+    ["45,000.5", "COP", "45,000"],
+    ["1234", "USD", "1,234"],
+    ["1,234.5", "USD", "1,234.5"],
+    ["12,", "USD", "12."],
+    ["12.999", "USD", "12.99"],
+    [".5", "USD", "0.5"],
+    ["1,2345", "USD", "12,345"],
+  ])("en: al escribir %s en %s → %s", (raw, currency, text) => {
+    expect(formatAmountTyping(raw, currency, "en")).toBe(text);
   });
 });
 

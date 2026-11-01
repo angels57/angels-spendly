@@ -32,7 +32,7 @@ import {
   categoryInputSchema,
   type CategoryInput,
 } from "@/lib/schemas";
-import { useT } from "@/i18n/provider";
+import { useT, useLocale } from "@/i18n/provider";
 import { toErrorCode } from "@/i18n/errors";
 import type { Dictionary } from "@/i18n/dictionaries";
 
@@ -46,6 +46,7 @@ export function CategoryManager({
   currency: CurrencyCode;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [editing, setEditing] = useState<Editing | null>(null);
   // Solo una fila deslizada (abierta) a la vez.
   const [swipedId, setSwipedId] = useState<string | null>(null);
@@ -114,7 +115,7 @@ export function CategoryManager({
                           <span className="truncate text-xs text-muted-foreground">
                             {c.budgetCents !== null &&
                               t.categories.perMonth(
-                                formatMoney(c.budgetCents, currency),
+                                formatMoney(c.budgetCents, currency, locale),
                               )}
                             {c.keywords.length > 0
                               ? c.keywords.join(", ")
@@ -176,6 +177,7 @@ function CategoryForm({
 }) {
   // Vacío = aún no elegido: se usa el sugerido por el nombre.
   const t = useT();
+  const locale = useLocale();
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [name, setName] = useState(category?.name ?? "");
@@ -188,7 +190,7 @@ function CategoryForm({
   const [keywords, setKeywords] = useState(category?.keywords ?? []);
   const [budget, setBudget] = useState(
     category?.budgetCents
-      ? formatAmountInput(category.budgetCents, currency)
+      ? formatAmountInput(category.budgetCents, currency, locale)
       : "",
   );
   const [error, setError] = useState<string | null>(null);
@@ -279,7 +281,9 @@ function CategoryForm({
             {kind === "income"
               ? t.categories.income
               : budgetPreview !== null &&
-                t.categories.perMonth(formatMoney(budgetPreview, currency))}
+                t.categories.perMonth(
+                  formatMoney(budgetPreview, currency, locale),
+                )}
             {kind === "expense" &&
               (keywords.length > 0
                 ? keywords.join(", ")

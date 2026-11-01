@@ -14,7 +14,7 @@ import {
   type CurrencyTotals,
   type CurrencyCode,
 } from "@/lib/money";
-import { getDictionary } from "@/i18n/server";
+import { getDictionary, getLocale } from "@/i18n/server";
 
 const MAX_BARS = 5;
 
@@ -26,6 +26,7 @@ export async function MonthSummary({
   currency: CurrencyCode;
 }) {
   const t = await getDictionary();
+  const locale = await getLocale();
   let spent = 0;
   let income = 0;
   const byCategory = new Map<
@@ -64,14 +65,14 @@ export async function MonthSummary({
     <Card>
       <CardHeader>
         <CardDescription className="first-letter:uppercase">
-          {t.home.spentIn(monthLabel())}
+          {t.home.spentIn(monthLabel(locale))}
         </CardDescription>
         <CardTitle className="text-4xl font-extrabold tracking-tight">
-          {formatMoney(spent, currency)}
+          {formatMoney(spent, currency, locale)}
         </CardTitle>
         {income > 0 && (
           <p className="text-sm font-semibold text-emerald-600">
-            {t.home.income(formatMoney(income, currency))}
+            {t.home.income(formatMoney(income, currency, locale))}
           </p>
         )}
         {others.length > 0 && <OtherCurrencies totals={others} />}
@@ -119,10 +120,13 @@ export async function OtherCurrencies({
   totals: CurrencyTotals[];
 }) {
   const t = await getDictionary();
+  const locale = await getLocale();
   const parts = totals.flatMap((t) => [
-    ...(t.spentCents > 0 ? [formatMoney(t.spentCents, t.currency)] : []),
+    ...(t.spentCents > 0
+      ? [formatMoney(t.spentCents, t.currency, locale)]
+      : []),
     ...(t.incomeCents > 0
-      ? [`+${formatMoney(t.incomeCents, t.currency)}`]
+      ? [`+${formatMoney(t.incomeCents, t.currency, locale)}`]
       : []),
   ]);
   return (

@@ -31,7 +31,7 @@ import {
   recurringInputSchema,
   NO_CATEGORY_COLOR,
 } from "@/lib/schemas";
-import { useT } from "@/i18n/provider";
+import { useT, useLocale } from "@/i18n/provider";
 import { toErrorCode } from "@/i18n/errors";
 
 type Editing = { mode: "new" } | { mode: "edit"; rule: RecurringRow };
@@ -46,6 +46,7 @@ export function RecurringManager({
   currency: CurrencyCode;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [editing, setEditing] = useState<Editing | null>(null);
   const close = () => setEditing(null);
   const active = rules.filter((r) => r.nextRun !== null);
@@ -93,20 +94,20 @@ export function RecurringManager({
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate font-semibold">{r.note}</span>
                         <span className="truncate text-xs text-muted-foreground">
-                          {describeRecurrence(r.frequency, r.startDate)}
+                          {describeRecurrence(r.frequency, r.startDate, locale)}
                           {r.nextRun
-                            ? t.recurringForm.next(
-                                dayLabel(r.nextRun).toLowerCase(),
-                              )
+                            ? t.recurringForm.next(dayLabel(r.nextRun, locale))
                             : r.endDate &&
-                              t.recurringForm.ended(dayLabel(r.endDate))}
+                              t.recurringForm.ended(
+                                dayLabel(r.endDate, locale),
+                              )}
                         </span>
                       </span>
                       <span
                         className={`font-bold tabular-nums ${r.category?.kind === "income" ? "text-emerald-600" : ""}`}
                       >
                         {r.category?.kind === "income" ? "+" : "−"}
-                        {formatMoney(r.amountCents, r.currency)}
+                        {formatMoney(r.amountCents, r.currency, locale)}
                       </span>
                     </button>
                   </li>
@@ -161,9 +162,10 @@ function RecurringForm({
   onDone: () => void;
 }) {
   const t = useT();
+  const locale = useLocale();
   const [note, setNote] = useState(rule?.note ?? "");
   const [amount, setAmount] = useState(
-    rule ? formatAmountInput(rule.amountCents, rule.currency) : "",
+    rule ? formatAmountInput(rule.amountCents, rule.currency, locale) : "",
   );
   const [currencyCode, setCurrencyCode] = useState(rule?.currency ?? currency);
   const [categoryId, setCategoryId] = useState(rule?.categoryId ?? "");
@@ -325,7 +327,7 @@ function RecurringForm({
         </label>
       </div>
       <p className="-mt-2 text-xs text-muted-foreground">
-        {describeRecurrence(frequency, startDate)}
+        {describeRecurrence(frequency, startDate, locale)}
         {rule && t.recurringForm.lockedHint}
       </p>
       <div className="flex flex-col gap-1.5">
