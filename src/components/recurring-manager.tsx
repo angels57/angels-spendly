@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { Plus, Repeat, X } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "cn";
+import { SAVED_FEEDBACK_MS, pause, useArrivals } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -52,6 +54,7 @@ export function RecurringManager({
   const locale = useLocale();
   const [editing, setEditing] = useState<Editing | null>(null);
   const close = () => setEditing(null);
+  const { fresh } = useArrivals(rules);
   const active = rules.filter((r) => r.nextRun !== null);
   const finished = rules.filter((r) => r.nextRun === null);
 
@@ -80,11 +83,17 @@ export function RecurringManager({
               </h2>
               <ul>
                 {section.items.map((r) => (
-                  <li key={r.id}>
+                  <li
+                    key={r.id}
+                    className={cn(
+                      "grid grid-rows-[1fr]",
+                      fresh.has(r.id) && "animate-row-in",
+                    )}
+                  >
                     <button
                       type="button"
                       onClick={() => setEditing({ mode: "edit", rule: r })}
-                      className="flex w-full items-center gap-3 rounded-2xl px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                      className="flex min-h-0 w-full pressable items-center gap-3 overflow-hidden rounded-2xl px-1 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                     >
                       <span
                         className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
@@ -192,6 +201,7 @@ function RecurringForm({
   const [endDate, setEndDate] = useState(rule?.endDate ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(false);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -224,6 +234,8 @@ function RecurringForm({
         setError(t.errors[result.error]);
         return;
       }
+      setSaved(true);
+      await pause(SAVED_FEEDBACK_MS);
       toast.success(
         rule
           ? t.recurringForm.saved
@@ -439,6 +451,7 @@ function RecurringForm({
       <FormFooter
         submitLabel={rule ? t.common.saveChanges : t.recurringForm.create}
         pending={pending}
+        saved={saved}
         deleteLabel={t.recurringForm.delete}
         onDelete={rule ? remove : undefined}
       />

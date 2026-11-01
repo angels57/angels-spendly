@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ManagerSkeleton } from "@/components/skeletons";
 import { RecurringManager } from "@/components/recurring-manager";
 import { getActiveList, getCategories, getRecurring } from "@/lib/data";
 import { getDictionary, getLocalHref } from "@/i18n/server";
@@ -25,7 +25,7 @@ export default async function RecurringPage() {
         </Link>
         <h2 className="text-lg font-extrabold">{t.recurring.title}</h2>
       </div>
-      <Suspense fallback={<Skeleton className="h-64 rounded-xl" />}>
+      <Suspense fallback={<ManagerSkeleton rows={3} />}>
         <Recurring />
       </Suspense>
     </div>

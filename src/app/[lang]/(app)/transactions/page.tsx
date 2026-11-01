@@ -4,7 +4,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Repeat } from "lucide-react";
 import { z } from "zod";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TransactionsSkeleton } from "@/components/skeletons";
 import { ManualAdd } from "@/components/manual-add";
 import { TransactionFilters } from "@/components/transaction-filters";
 import { TransactionList } from "@/components/transaction-list";
@@ -30,7 +30,7 @@ export default function TransactionsPage({
   searchParams,
 }: PageProps<"/[lang]/transactions">) {
   return (
-    <Suspense fallback={<Skeleton className="h-96 rounded-xl" />}>
+    <Suspense fallback={<TransactionsSkeleton />}>
       <TransactionsView searchParams={searchParams} />
     </Suspense>
   );

@@ -360,6 +360,7 @@ export const es: Dictionary = {
     optional: "Opcional",
     saveChanges: "Guardar cambios",
     changesSaved: "Cambios guardados",
+    saved: "Guardado",
     undo: "Deshacer",
     edit: "Editar",
     delete: "Borrar",

@@ -359,6 +359,7 @@ export const en = {
     optional: "Optional",
     saveChanges: "Save changes",
     changesSaved: "Changes saved",
+    saved: "Saved",
     undo: "Undo",
     edit: "Edit",
     delete: "Delete",

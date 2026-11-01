@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight, Download, LogOut, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsSkeleton } from "@/components/skeletons";
 import { CurrencySettings } from "@/components/currency-settings";
 import { InstallRow, LanguageSelect, ThemeSelect } from "@/components/settings";
 import { signOut } from "@/app/[lang]/login/actions";
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 rounded-xl" />}>
+    <Suspense fallback={<SettingsSkeleton />}>
       <Settings />
     </Suspense>
   );

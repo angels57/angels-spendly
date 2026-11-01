@@ -22,6 +22,7 @@ import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { useT, useLocale } from "@/i18n/provider";
 import { dayLabel, fromISODate } from "@/lib/dates";
+import { ROW_EXIT_MS, pause, useArrivals } from "@/lib/motion";
 
 export type TransactionGroup = {
   day: string;
@@ -45,13 +46,21 @@ export function TransactionGroups({
   const [editing, setEditing] = useState<TransactionRow | null>(null);
   // Solo una fila deslizada (abierta) a la vez.
   const [swipedId, setSwipedId] = useState<string | null>(null);
+  // Borrado desde el formulario: la fila sale animada como al deslizar.
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const close = () => setEditing(null);
+  const items = groups.flatMap((g) => g.items);
+  const { fresh, confirmed } = useArrivals(items);
+  // Ya borrada: si vuelve (deshacer), entra visible.
+  if (removingId && !items.some((tx) => tx.id === removingId)) {
+    setRemovingId(null);
+  }
 
   async function remove(transaction: TransactionRow) {
     const result = await deleteTransaction(transaction.id);
     if (!result.ok) {
       toast.error(t.errors[result.error]);
-      return;
+      return false;
     }
     close();
     toast(
@@ -70,6 +79,14 @@ export function TransactionGroups({
         },
       },
     );
+    return true;
+  }
+
+  async function removeFromForm(transaction: TransactionRow) {
+    close();
+    setRemovingId(transaction.id);
+    await pause(ROW_EXIT_MS);
+    if (!(await remove(transaction))) setRemovingId(null);
   }
 
   return (
@@ -82,9 +99,18 @@ export function TransactionGroups({
             </h2>
             <ul className="flex flex-col">
               {group.items.map((t) => (
-                <li key={t.id}>
+                <li
+                  key={t.id}
+                  // grid: animate-row-in abre la fila desde altura 0.
+                  className={cn(
+                    "grid grid-rows-[1fr]",
+                    fresh.has(t.id) && "animate-row-in",
+                  )}
+                >
                   {t.pending ? (
-                    <TransactionItem transaction={t} />
+                    <div className="min-h-0 overflow-hidden rounded-2xl">
+                      <TransactionItem transaction={t} />
+                    </div>
                   ) : (
                     <SwipeRow
                       open={swipedId === t.id}
@@ -94,9 +120,11 @@ export function TransactionGroups({
                         setEditing(t);
                       }}
                       onDelete={() => remove(t)}
+                      removing={removingId === t.id}
                     >
                       <TransactionItem
                         transaction={t}
+                        confirmed={confirmed.has(t.id)}
                         onSelect={() => setEditing(t)}
                       />
                     </SwipeRow>
@@ -129,15 +157,12 @@ export function TransactionGroups({
                 }}
                 categories={categories}
                 currency={currency}
-                onSubmit={async (input) => {
-                  const result = await updateTransaction(editing.id, input);
-                  if (result.ok) {
-                    close();
-                    toast.success(t.common.changesSaved);
-                  }
-                  return result;
+                onSubmit={(input) => updateTransaction(editing.id, input)}
+                onSaved={() => {
+                  close();
+                  toast.success(t.common.changesSaved);
                 }}
-                onDelete={() => remove(editing)}
+                onDelete={() => removeFromForm(editing)}
               />
             )}
           </div>
@@ -149,9 +174,12 @@ export function TransactionGroups({
 
 function TransactionItem({
   transaction: tx,
+  confirmed = false,
   onSelect,
 }: {
   transaction: TransactionRow;
+  /** Acaba de reemplazar a su versión optimista: el resaltado se apaga. */
+  confirmed?: boolean;
   /** Sin él (movimiento aún guardándose) la fila no se puede tocar. */
   onSelect?: () => void;
 }) {
@@ -171,8 +199,9 @@ function TransactionItem({
       disabled={!onSelect}
       aria-busy={tx.pending || undefined}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-        tx.pending && "bg-primary/5 hover:bg-primary/5",
+        "flex w-full pressable items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+        tx.pending && "bg-primary/5 opacity-70 hover:bg-primary/5",
+        confirmed && "animate-row-confirmed",
       )}
     >
       <span

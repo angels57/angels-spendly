@@ -49,16 +49,12 @@ export function ManualAdd({
               <TransactionForm
                 categories={categories}
                 currency={currency}
-                onSubmit={async (input) => {
-                  const result = await createTransaction({
-                    ...input,
-                    source: "manual",
-                  });
-                  if (result.ok) {
-                    setOpen(false);
-                    toast.success(t.transactionForm.added);
-                  }
-                  return result;
+                onSubmit={(input) =>
+                  createTransaction({ ...input, source: "manual" })
+                }
+                onSaved={() => {
+                  setOpen(false);
+                  toast.success(t.transactionForm.added);
                 }}
               />
             )}

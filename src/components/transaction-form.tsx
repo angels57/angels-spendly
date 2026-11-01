@@ -8,6 +8,7 @@ import { CurrencySelect } from "@/components/currency-select";
 import type { Category } from "@/lib/data";
 import { formatAmountInput, type CurrencyCode } from "@/lib/money";
 import { parseAmount, toISODate } from "@/lib/parser";
+import { SAVED_FEEDBACK_MS, pause } from "@/lib/motion";
 import type { TransactionInput } from "@/lib/schemas";
 import { useT, useLocale } from "@/i18n/provider";
 import type { ErrorCode } from "@/i18n/errors";
@@ -22,6 +23,7 @@ export function TransactionForm({
   categories,
   currency,
   onSubmit,
+  onSaved,
   onDelete,
 }: {
   initial?: TransactionInput;
@@ -29,6 +31,8 @@ export function TransactionForm({
   /** Moneda principal de la lista: la de un movimiento nuevo. */
   currency: CurrencyCode;
   onSubmit: (input: TransactionInput) => Promise<Result>;
+  /** Tras guardar y mostrar el ✓: cerrar el drawer y avisar. */
+  onSaved?: () => void;
   onDelete?: () => Promise<void>;
 }) {
   const t = useT();
@@ -45,6 +49,7 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [note, setNote] = useState(initial?.note ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const [deleting, startDelete] = useTransition();
 
@@ -64,7 +69,13 @@ export function TransactionForm({
         categoryId: categoryId || null,
         note: note.trim(),
       });
-      if (!result.ok) setError(t.errors[result.error]);
+      if (!result.ok) {
+        setError(t.errors[result.error]);
+        return;
+      }
+      setSaved(true);
+      await pause(SAVED_FEEDBACK_MS);
+      onSaved?.();
     });
   }
 
@@ -157,6 +168,7 @@ export function TransactionForm({
       <FormFooter
         submitLabel={initial ? t.common.saveChanges : t.transactionForm.add}
         pending={pending || deleting}
+        saved={saved}
         deleteLabel={t.transactionForm.delete}
         onDelete={onDelete && (() => startDelete(onDelete))}
       />

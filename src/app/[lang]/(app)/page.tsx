@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardSkeleton } from "@/components/skeletons";
 import { BudgetProgress } from "@/components/budget-progress";
 import { MonthClosing, MonthSummary } from "@/components/month-summary";
 import { DashboardFeed } from "@/components/dashboard-feed";
@@ -131,15 +131,6 @@ async function Dashboard({
           expenses(currentTransactions ?? monthTransactions),
         )}
       />
-    </>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <>
-      <Skeleton className="h-72 rounded-xl" />
-      <Skeleton className="h-16 rounded-xl" />
     </>
   );
 }

@@ -133,3 +133,84 @@
 @utility bg-brand {
   background-image: linear-gradient(135deg, #6a60d6 0%, #2b2470 100%);
 }
+
+/* Animaciones (los tiempos de JS están en src/lib/motion.ts). Se anima
+   transform/opacity y, para abrir o cerrar filas, grid-template-rows. */
+@keyframes row-in {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes row-confirmed {
+  from {
+    background-color: color-mix(in oklab, var(--primary) 14%, transparent);
+  }
+}
+@keyframes shimmer {
+  to {
+    translate: 100% 0;
+  }
+}
+@keyframes saved-pop {
+  0% {
+    scale: 0.4;
+  }
+  70% {
+    scale: 1.15;
+  }
+}
+
+/* Fila que acaba de aparecer (guardado instantáneo, deshacer): se abre y
+   cae. Va en un contenedor grid cuyo hijo tiene min-h-0. */
+@utility animate-row-in {
+  animation: row-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Fila confirmada tras el guardado instantáneo: el resaltado se apaga. */
+@utility animate-row-confirmed {
+  animation: row-confirmed 1s ease-out;
+}
+@utility animate-saved-pop {
+  animation: saved-pop 300ms ease-out;
+}
+
+/* Respuesta al tocar: se hunde un poco mientras se pulsa. */
+@utility pressable {
+  transition-property:
+    color, background-color, border-color, box-shadow, opacity, scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+  &:active:not(:disabled) {
+    scale: 0.97;
+  }
+}
+
+/* Brillo que recorre los esqueletos de carga. */
+@utility skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    translate: -100% 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--background) 55%, transparent),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

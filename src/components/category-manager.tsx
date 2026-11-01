@@ -3,6 +3,13 @@
 import { useState, useTransition } from "react";
 import { Check, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "cn";
+import {
+  ROW_EXIT_MS,
+  SAVED_FEEDBACK_MS,
+  pause,
+  useArrivals,
+} from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -50,7 +57,25 @@ export function CategoryManager({
   const [editing, setEditing] = useState<Editing | null>(null);
   // Solo una fila deslizada (abierta) a la vez.
   const [swipedId, setSwipedId] = useState<string | null>(null);
+  // Borrada desde el formulario: la fila sale animada como al deslizar.
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const close = () => setEditing(null);
+  const { fresh } = useArrivals(categories);
+  // Ya borrada: si vuelve (deshacer), entra visible.
+  if (removingId && !categories.some((c) => c.id === removingId)) {
+    setRemovingId(null);
+  }
+
+  async function removeFromForm(category: CategoryWithCount) {
+    close();
+    setRemovingId(category.id);
+    await pause(ROW_EXIT_MS);
+    const error = await deleteWithUndo(category, t);
+    if (error) {
+      toast.error(error);
+      setRemovingId(null);
+    }
+  }
 
   const sections = [
     {
@@ -84,7 +109,13 @@ export function CategoryManager({
               </h2>
               <ul>
                 {section.items.map((c) => (
-                  <li key={c.id}>
+                  <li
+                    key={c.id}
+                    className={cn(
+                      "grid grid-rows-[1fr]",
+                      fresh.has(c.id) && "animate-row-in",
+                    )}
+                  >
                     <SwipeRow
                       open={swipedId === c.id}
                       onOpenChange={(open) => setSwipedId(open ? c.id : null)}
@@ -95,14 +126,16 @@ export function CategoryManager({
                       onDelete={async () => {
                         const error = await deleteWithUndo(c, t);
                         if (error) toast.error(error);
+                        return !error;
                       }}
+                      removing={removingId === c.id}
                     >
                       <button
                         type="button"
                         onClick={() =>
                           setEditing({ mode: "edit", category: c })
                         }
-                        className="flex w-full items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                        className="flex w-full pressable items-center gap-3 rounded-2xl bg-background px-1 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                       >
                         <span
                           className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-lg"
@@ -153,6 +186,7 @@ export function CategoryManager({
                   (c) => editing.mode === "new" || c.id !== editing.category.id,
                 )}
                 onDone={close}
+                onRemove={removeFromForm}
               />
             )}
           </div>
@@ -167,6 +201,7 @@ function CategoryForm({
   currency,
   others,
   onDone,
+  onRemove,
 }: {
   category: CategoryWithCount | null;
   currency: CurrencyCode;
@@ -174,6 +209,8 @@ function CategoryForm({
   /** Las demás categorías: para no repetir emoji ni palabras clave. */
   others: CategoryWithCount[];
   onDone: () => void;
+  /** Borrar: cierra el drawer y la fila sale animada de la lista. */
+  onRemove: (category: CategoryWithCount) => void;
 }) {
   // Vacío = aún no elegido: se usa el sugerido por el nombre.
   const t = useT();
@@ -214,6 +251,7 @@ function CategoryForm({
     new Set(keywordOwners.keys()),
   );
   const [pending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(false);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -243,18 +281,15 @@ function CategoryForm({
         setError(t.errors[result.error]);
         return;
       }
+      setSaved(true);
+      await pause(SAVED_FEEDBACK_MS);
       toast.success(category ? t.categories.saved : t.categories.created);
       onDone();
     });
   }
 
   function remove() {
-    if (!category) return;
-    startTransition(async () => {
-      const error = await deleteWithUndo(category, t);
-      if (error) setError(error);
-      else onDone();
-    });
+    if (category) onRemove(category);
   }
 
   return (
@@ -422,6 +457,7 @@ function CategoryForm({
       <FormFooter
         submitLabel={category ? t.common.saveChanges : t.categories.create}
         pending={pending}
+        saved={saved}
         deleteLabel={t.categories.delete}
         onDelete={category ? remove : undefined}
       />

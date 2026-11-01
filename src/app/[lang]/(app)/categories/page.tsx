@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ManagerSkeleton } from "@/components/skeletons";
 import { CategoryManager } from "@/components/category-manager";
 import { getActiveList, getCategoriesWithCounts } from "@/lib/data";
 import { getDictionary } from "@/i18n/server";
@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function CategoriesPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 rounded-xl" />}>
+    <Suspense fallback={<ManagerSkeleton />}>
       <Categories />
     </Suspense>
   );
