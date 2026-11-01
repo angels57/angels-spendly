@@ -3,11 +3,13 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CurrencySelect } from "@/components/currency-select";
-import { setListCurrency } from "@/app/(app)/actions";
-import { CURRENCIES, type CurrencyCode } from "@/lib/money";
+import { setListCurrency } from "@/app/[lang]/(app)/actions";
+import type { CurrencyCode } from "@/lib/money";
+import { useT } from "@/i18n/provider";
 
 /** Moneda principal de la lista: la de totales, barras y presupuestos. */
 export function CurrencySettings({ currency }: { currency: CurrencyCode }) {
+  const t = useT();
   const [value, setValue] = useState(currency);
   const [pending, startTransition] = useTransition();
 
@@ -18,17 +20,17 @@ export function CurrencySettings({ currency }: { currency: CurrencyCode }) {
       const result = await setListCurrency(next);
       if (!result.ok) {
         setValue(previous);
-        toast.error(result.message);
+        toast.error(t.errors[result.error]);
         return;
       }
-      toast.success(`Moneda principal: ${CURRENCIES[next].name}`);
+      toast.success(t.currency.mainSet(t.currencies[next]));
     });
   }
 
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor="list-currency" className="text-sm font-semibold">
-        Moneda principal
+        {t.currency.main}
       </label>
       <CurrencySelect
         id="list-currency"
@@ -37,10 +39,7 @@ export function CurrencySettings({ currency }: { currency: CurrencyCode }) {
         disabled={pending}
         className="w-full"
       />
-      <p className="text-xs text-muted-foreground">
-        Los totales y presupuestos se calculan en esta moneda. Puedes anotar
-        gastos en otras (por ejemplo «netflix 15 usd»): se muestran aparte.
-      </p>
+      <p className="text-xs text-muted-foreground">{t.currency.mainHint}</p>
     </div>
   );
 }

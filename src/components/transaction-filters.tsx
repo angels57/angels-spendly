@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { selectClassName } from "@/components/transaction-form";
 import type { Category } from "@/lib/data";
+import { localizePath } from "@/i18n/config";
+import { useLocale, useLocalHref, useT } from "@/i18n/provider";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -34,6 +36,9 @@ export function TransactionFilters({
   categories: Category[];
 }) {
   const router = useRouter();
+  const t = useT();
+  const locale = useLocale();
+  const localHref = useLocalHref();
   const [q, setQ] = useState(filters.q);
   const { month, category } = filters;
 
@@ -41,19 +46,22 @@ export function TransactionFilters({
   useEffect(() => {
     if (q.trim() === filters.q) return;
     const timer = setTimeout(() => {
-      router.replace(filtersHref({ month, category, q: q.trim() }), {
-        scroll: false,
-      });
+      router.replace(
+        localizePath(locale, filtersHref({ month, category, q: q.trim() })),
+        {
+          scroll: false,
+        },
+      );
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [q, filters.q, month, category, router]);
+  }, [q, filters.q, month, category, router, locale]);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <Link
-          href={filtersHref({ ...filters, month: prevMonth })}
-          aria-label="Mes anterior"
+          href={localHref(filtersHref({ ...filters, month: prevMonth }))}
+          aria-label={t.filters.previousMonth}
           className="rounded-full p-3 hover:bg-muted"
         >
           <ChevronLeft className="size-5" />
@@ -63,8 +71,8 @@ export function TransactionFilters({
         </h2>
         {nextMonth ? (
           <Link
-            href={filtersHref({ ...filters, month: nextMonth })}
-            aria-label="Mes siguiente"
+            href={localHref(filtersHref({ ...filters, month: nextMonth }))}
+            aria-label={t.filters.nextMonth}
             className="rounded-full p-3 hover:bg-muted"
           >
             <ChevronRight className="size-5" />
@@ -76,35 +84,37 @@ export function TransactionFilters({
       </div>
       <div className="flex gap-2">
         <label className="relative flex-1">
-          <span className="sr-only">Buscar en las notas</span>
+          <span className="sr-only">{t.filters.searchLabel}</span>
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar…"
+            placeholder={t.filters.search}
             className="h-11 pl-9"
           />
         </label>
         <label className="w-40">
-          <span className="sr-only">Filtrar por categoría</span>
+          <span className="sr-only">{t.filters.categoryLabel}</span>
           <select
             value={filters.category}
             onChange={(e) =>
               router.replace(
-                filtersHref({ ...filters, q, category: e.target.value }),
+                localHref(
+                  filtersHref({ ...filters, q, category: e.target.value }),
+                ),
                 { scroll: false },
               )
             }
             className={selectClassName}
           >
-            <option value="">Todas</option>
+            <option value="">{t.filters.all}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.emoji} {c.name}
               </option>
             ))}
-            <option value="none">Sin categoría</option>
+            <option value="none">{t.common.uncategorized}</option>
           </select>
         </label>
       </div>

@@ -1,9 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { localizePath, type Locale } from "@/i18n/config";
 
 // Refreshes the auth session on every request and writes the updated
 // cookies to both the request (for Server Components) and the response.
-export async function updateSession(request: NextRequest) {
+// `route`: idioma y ruta sin prefijo ("/es/login" → es, "/login"). Sin él
+// (p. ej. /auth/callback) solo se refresca la sesión.
+export async function updateSession(
+  request: NextRequest,
+  route?: { locale: Locale; path: string },
+) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -31,21 +37,26 @@ export async function updateSession(request: NextRequest) {
   // it validates the JWT and triggers the refresh.
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims);
+  if (!route) return response;
 
   // Chequeo optimista: la autorización real está en la DAL y en RLS.
-  const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const { locale, path } = route;
+  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
   if (!signedIn && !isPublic) {
-    return redirectKeepingCookies(request, response, "/login");
+    return redirectKeepingCookies(
+      request,
+      response,
+      localizePath(locale, "/login"),
+    );
   }
-  if (signedIn && pathname === "/login") {
-    return redirectKeepingCookies(request, response, "/");
+  if (signedIn && path === "/login") {
+    return redirectKeepingCookies(request, response, localizePath(locale, "/"));
   }
 
   return response;
 }
 
-const PUBLIC_PATHS = ["/login", "/auth", "/offline"];
+const PUBLIC_PATHS = ["/login", "/offline"];
 
 function redirectKeepingCookies(
   request: NextRequest,

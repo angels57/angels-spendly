@@ -145,3 +145,32 @@ describe("parseExpense: categoría y nota", () => {
     expect(parse("$12").note).toBe("");
   });
 });
+
+describe("parseExpense: inglés", () => {
+  it.each([
+    ["lunch 12k", 1_200_000],
+    ["concert 2 thousand", 200_000],
+    ["car 3 grand", 300_000],
+    ["rent 1.5 million", 150_000_000],
+    ["laptop 2 millions", 200_000_000],
+    ["groceries 1,234.56", 123_456],
+    ["coffee 4.50", 450],
+  ])("%s → %i centavos", (text, cents) => {
+    expect(parse(text).amountCents).toBe(cents);
+  });
+
+  it.each([
+    ["dinner 30 dollars", "USD"],
+    ["taxi 20 bucks", "USD"],
+    ["book 10 pounds", "GBP"],
+    ["hotel 80 euros", "EUR"],
+    ["lunch 12", null],
+  ])("moneda: %s → %s", (text, currency) => {
+    expect(parse(text).currency).toBe(currency);
+  });
+
+  it("la moneda y el multiplicador no quedan en la nota", () => {
+    expect(parse("taxi 20 bucks yesterday").note).toBe("Taxi");
+    expect(parse("concert 2 thousand").note).toBe("Concert");
+  });
+});

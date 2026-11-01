@@ -44,3 +44,18 @@ describe("isSingleEmoji", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 });
+
+describe("suggestEmoji en inglés", () => {
+  it.each([
+    ["Pets", "🐶"],
+    ["Rent", "🏠"],
+    ["Groceries", "🛒"],
+    ["Subscriptions", "📺"],
+    ["Salary", "💵"],
+    ["Gym", "🏋️"],
+    ["Coffee shop", "☕"],
+    ["Car insurance", "🚗"],
+  ])("%s → %s", (name, emoji) => {
+    expect(suggestEmoji(name)).toBe(emoji);
+  });
+});

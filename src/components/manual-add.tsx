@@ -11,9 +11,10 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { TransactionForm } from "@/components/transaction-form";
-import { createTransaction } from "@/app/(app)/actions";
+import { createTransaction } from "@/app/[lang]/(app)/actions";
 import type { Category } from "@/lib/data";
 import type { CurrencyCode } from "@/lib/money";
+import { useT } from "@/i18n/provider";
 
 export function ManualAdd({
   categories,
@@ -22,6 +23,7 @@ export function ManualAdd({
   categories: Category[];
   currency: CurrencyCode;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,13 +35,13 @@ export function ManualAdd({
         onClick={() => setOpen(true)}
       >
         <Plus />
-        Añadir movimiento
+        {t.transactionForm.addButton}
       </Button>
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent className="mx-auto max-w-md">
           <DrawerHeader>
             <DrawerTitle className="text-lg font-bold">
-              Nuevo movimiento
+              {t.transactionForm.newTitle}
             </DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pt-4">
@@ -54,7 +56,7 @@ export function ManualAdd({
                   });
                   if (result.ok) {
                     setOpen(false);
-                    toast.success("Movimiento añadido");
+                    toast.success(t.transactionForm.added);
                   }
                   return result;
                 }}

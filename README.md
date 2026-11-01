@@ -6,14 +6,16 @@
 
 ## Qué hace
 
-- **Quick add en lenguaje natural:** detecta monto, moneda, fecha y categoría del texto, sin IA ni conexión. Entiende `25 mil`, `12k` y `1,5 millones`, fechas como `ayer`, `anteayer`, `hace 3 días`, `el 3 de octubre` o `viernes pasado`, y moneda con `usd`, `US$`, `dólares`, `€`, `cop`…
-- **Multimoneda:** el peso colombiano (COP) va por defecto. Cada lista tiene una **moneda principal** (se cambia en _Categorías_) y cada movimiento o recurrente puede ir en otra: COP, USD, EUR, MXN, PEN, CLP, ARS, BRL o GBP. Los totales, las barras y los presupuestos se calculan en la principal; el resto se muestra aparte (“Además: US$ 15,00”), porque todavía no hay tipos de cambio.
+- **Inglés y español:** inglés por defecto; el idioma va en la URL (`/en/…`, `/es/…`) y se elige en _Ajustes_ (se guarda en la cuenta). Textos, fechas, formatos de dinero, CSV, categorías iniciales y correos en el idioma de cada persona.
+- **Quick add en lenguaje natural:** detecta monto, moneda, fecha y categoría del texto, sin IA ni conexión. En español y en inglés: `25 mil`, `12k`, `1,5 millones`, `2 thousand`, `1.5 million`; fechas como `ayer`, `hace 3 días`, `el 3 de octubre`, `yesterday` o `last friday`; y moneda con `usd`, `US$`, `dólares`, `dollars`, `bucks`, `€`, `cop`…
+- **Multimoneda:** el peso colombiano (COP) va por defecto. Cada lista tiene una **moneda principal** (se cambia en _Ajustes_) y cada movimiento o recurrente puede ir en otra: COP, USD, EUR, MXN, PEN, CLP, ARS, BRL o GBP. Los totales, las barras y los presupuestos se calculan en la principal; el resto se muestra aparte (“Además: US$ 15,00”), porque todavía no hay tipos de cambio.
 - **Movimientos:** añadir, editar y borrar con deshacer; búsqueda, filtro por categoría y navegación por meses.
 - **Categorías** con emoji, color y palabras clave (las que usa el quick add para elegir la categoría), y **presupuesto mensual** con barra de progreso y aviso de cuánto queda.
 - **Recurrentes** (alquiler, suscripciones, sueldo): semanales, mensuales o anuales. Se generan solos cada día con `pg_cron`.
 - **Cuentas:** correo y contraseña, sin confirmar el correo; también recuperar contraseña y enlace mágico.
 - **PWA:** se instala en el móvil, funciona sin conexión con una página offline, y reintenta lo que guardaste sin red.
-- **Modo oscuro** (claro, oscuro o el del sistema) y diseño pensado para móvil.
+- **Ajustes:** idioma, moneda principal, tema (claro, oscuro o el del sistema), recurrentes, exportar CSV, instalar la app y cerrar sesión.
+- Diseño pensado para móvil: deslizar movimientos y categorías para editar o borrar, guardado instantáneo en el quick add.
 
 ## Stack
 
@@ -82,6 +84,7 @@ En el panel de Supabase, _Authentication_:
 
 - **Sign In / Providers → Email:** desactiva _Confirm email_ para entrar al registrarse, y pon la longitud mínima de contraseña en **8**.
 - **URL Configuration:** _Site URL_ = `https://angels-spendly.vercel.app`; en _Redirect URLs_ añade `https://angels-spendly.vercel.app/**`.
+- **Emails → Templates:** pega las plantillas de `supabase/templates/` (enlace mágico, recuperación y confirmación). Son bilingües según el idioma de la cuenta; el asunto va en los dos idiomas. No uses `supabase config push` para esto: subiría también la configuración local.
 - **Emails → SMTP:** el SMTP incluido solo envía unos pocos correos por hora. Para recuperar contraseñas o usar el enlace mágico con usuarios reales, configura uno propio, por ejemplo Resend (`smtp.resend.com`, puerto 465).
 
 **App (Vercel).** Variables de entorno: `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Despliegue manual:
@@ -97,18 +100,27 @@ npx vercel deploy --prod
 ```
 src/
 ├── app/
-│   ├── (app)/              rutas con sesión: cabecera + pestañas
-│   │   ├── page.tsx        inicio: resumen del mes, presupuestos, quick add
-│   │   ├── transactions/   movimientos: mes, búsqueda, filtro, añadir manual
-│   │   ├── categories/     moneda principal, categorías y presupuestos
-│   │   ├── recurring/      movimientos recurrentes
-│   │   └── actions.ts      Server Actions de movimientos y moneda
-│   ├── login/              entrar, crear cuenta, recuperar contraseña, enlace mágico
-│   ├── reset-password/     elegir contraseña nueva (desde el correo)
-│   ├── auth/callback/      canje del código de los enlaces del correo
-│   ├── offline/            página sin conexión (service worker)
-│   └── manifest.ts         manifest de la PWA
+│   ├── [lang]/                 /en/… y /es/…: todo lo que ve el usuario
+│   │   ├── layout.tsx          layout raíz: <html lang>, generateStaticParams (en, es)
+│   │   ├── (app)/              rutas con sesión: cabecera + pestañas
+│   │   │   ├── page.tsx        inicio: resumen del mes, presupuestos, quick add
+│   │   │   ├── transactions/   movimientos: mes, búsqueda, filtro, añadir manual
+│   │   │   ├── categories/     categorías y presupuestos
+│   │   │   ├── recurring/      movimientos recurrentes
+│   │   │   ├── settings/       ajustes (+ export/ con el CSV)
+│   │   │   └── actions.ts      Server Actions de movimientos, moneda e idioma
+│   │   ├── login/              entrar, crear cuenta, recuperar contraseña, enlace mágico
+│   │   ├── reset-password/     elegir contraseña nueva (desde el correo)
+│   │   └── offline/            página sin conexión (service worker)
+│   ├── auth/callback/          canje del código de los correos (sin idioma en la URL)
+│   └── manifest.ts             manifest de la PWA (en inglés)
 ├── components/             UI de la app (+ ui/ con los componentes shadcn)
+├── i18n/
+│   ├── config.ts               idiomas, prefijos y Accept-Language (+ tests)
+│   ├── dictionaries/           en.ts (fuente de verdad) y es.ts (mismas claves)
+│   ├── server.ts, request.ts   idioma en Server Components / Actions y Route Handlers
+│   ├── provider.tsx            useT(), useLocale(), useLocalHref() en el cliente
+│   └── errors.ts               códigos de error de las Server Actions
 ├── lib/
 │   ├── data.ts             acceso a datos (verifica la sesión)
 │   ├── parser/             texto → monto, moneda, fecha, categoría (+ tests)
@@ -116,9 +128,10 @@ src/
 │   ├── schemas.ts          validación Zod compartida cliente/servidor
 │   ├── budgets.ts, dates.ts, recurrence.ts   utilidades (+ tests)
 │   └── supabase/           clientes browser/server, proxy de sesión, tipos
-└── proxy.ts                refresca la sesión y protege las rutas
+└── proxy.ts                elige el idioma, refresca la sesión y protege las rutas
 supabase/
 ├── migrations/             esquema SQL versionado (tablas, RLS, triggers, cron)
+├── templates/              correos bilingües de Auth
 └── config.toml             configuración de Supabase local
 ```
 
@@ -126,16 +139,17 @@ supabase/
 
 - **Next.js 16:** `middleware.ts` se llama `proxy.ts`. Con `cacheComponents`, lo que lee cookies (la sesión) va dentro de un `<Suspense>`. La documentación de esta versión está en `node_modules/next/dist/docs/`.
 - **Montos:** `numeric(12,2)` en la base de datos y centavos (enteros) en el cliente. COP y CLP se muestran sin decimales.
-- **Formato de monedas:** todo a la colombiana (`$ 12.000`, `US$ 12,00`, `MXN 12,00`), así `$` solo significa peso colombiano; el euro, `12,00 €`.
+- **Idiomas:** el idioma es el parámetro raíz `[lang]` (`next/root-params`), así las páginas se pre-renderizan por idioma. Sin prefijo, `proxy.ts` elige: cookie `NEXT_LOCALE` → navegador → inglés; al entrar manda el idioma de la cuenta (`profiles.locale`). Server Actions y Route Handlers leen la cookie; las acciones devuelven códigos de error y la pantalla los traduce. Un test falla si queda texto en español escrito a mano fuera de los diccionarios.
+- **Formato de monedas:** en español, a la colombiana (`$ 12.000`, `US$ 12,00`, `12,00 €`), así `$` solo es el peso colombiano; en inglés, como en EE. UU. (`COP 12,000`, `$12.00`, `€12.00`).
 - **Seguridad:** todas las tablas tienen RLS y un usuario solo ve las listas de las que es miembro. Las Server Actions validan sesión y datos con Zod. El callback de auth solo redirige a rutas internas.
 - **Móvil y teclado:** `interactive-widget=resizes-content` hace que Android encoja la página al abrir el teclado. iOS lo ignora, así que `KeyboardInset` publica la altura del teclado en `--keyboard-inset` y los drawers suben por encima. Los campos usan 16 px o más para que iOS no haga zoom, y los botones miden unos 44 px.
 - **Recurrentes:** `generate_recurring()` crea los movimientos pendientes; `pg_cron` la ejecuta a las 00:15 UTC y la app la llama al crear un recurrente.
-- **PWA:** `public/sw.js` cachea los assets y muestra `/offline` sin red; nunca guarda páginas con datos del usuario. Solo se registra en producción.
+- **PWA:** `public/sw.js` cachea los assets y muestra `/{idioma}/offline` sin red; nunca guarda páginas con datos del usuario. Solo se registra en producción.
 - **Pre-commit:** Husky corre lint-staged (ESLint + Prettier) y los tests.
 
 ## Pendiente
 
 - Tipos de cambio para sumar monedas distintas en un solo total.
-- Fase 3: IA para varios gastos en una frase, voz y foto del ticket.
-- Fase 4: listas compartidas, exportar y suscripción.
+- IA para varios gastos en una frase, voz y foto del ticket.
+- Listas compartidas y suscripción.
 - Zona horaria del usuario: hoy “hoy” y el cron usan UTC.

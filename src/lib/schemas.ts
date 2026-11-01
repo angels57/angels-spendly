@@ -30,8 +30,8 @@ export const CATEGORY_COLORS = [
 ] as const;
 
 export const categoryInputSchema = z.object({
-  name: z.string().trim().min(1, "Ponle un nombre.").max(40),
-  emoji: z.string().trim().refine(isSingleEmoji, "Elige un solo emoji."),
+  name: z.string().trim().min(1, "name_required").max(40),
+  emoji: z.string().trim().refine(isSingleEmoji, "single_emoji"),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   kind: z.enum(["expense", "income"]),
   keywords: z.array(z.string().trim().toLowerCase().min(1).max(30)).max(50),
@@ -61,11 +61,7 @@ export const recurringInputSchema = z
     amountCents: z.int().positive().max(9_999_999_999),
     currency: currencySchema,
     categoryId: z.uuid().nullable(),
-    note: z
-      .string()
-      .trim()
-      .min(1, "Ponle un nombre, como «Alquiler».")
-      .max(200),
+    note: z.string().trim().min(1, "recurring_name_required").max(200),
     frequency: z.enum(FREQUENCIES),
     startDate: z.iso.date(),
     endDate: z.iso.date().nullable(),
@@ -81,12 +77,12 @@ export const recurringInputSchema = z
           r.secondDay > r.firstDay
         : r.firstDay === null && r.secondDay === null,
     {
-      message: "El segundo día de la quincena debe ser posterior al primero.",
+      message: "semimonthly_days_order",
       path: ["secondDay"],
     },
   )
   .refine((r) => !r.endDate || r.endDate >= r.startDate, {
-    message: "La fecha de fin no puede ser anterior al inicio.",
+    message: "end_before_start",
     path: ["endDate"],
   });
 

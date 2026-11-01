@@ -6,6 +6,7 @@ import { Share, WifiOff, X } from "lucide-react";
 import { useOffline } from "next/offline";
 import { Button } from "@/components/ui/button";
 import { APP_SHORT_NAME } from "@/lib/brand";
+import { useT } from "@/i18n/provider";
 import { saveTimeZone } from "@/app/time-zone";
 
 /** Registra el service worker (solo en producción: en dev rompería el HMR). */
@@ -57,6 +58,7 @@ export function TimeZoneSync() {
 
 export function OfflineBanner() {
   const offline = useOffline();
+  const t = useT();
   if (!offline) return null;
   return (
     <div
@@ -64,7 +66,7 @@ export function OfflineBanner() {
       className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-foreground px-4 py-2 text-sm font-semibold text-background"
     >
       <WifiOff className="size-4" />
-      Sin conexión. Lo que guardes se enviará al reconectar.
+      {t.install.offlineBanner}
     </div>
   );
 }
@@ -104,6 +106,7 @@ export function InstallPrompt() {
     null,
   );
   const [dismissed, setDismissed] = useState(true);
+  const t = useT();
   const isIos = useIsIosSafariNotInstalled();
 
   useEffect(() => {
@@ -138,15 +141,14 @@ export function InstallPrompt() {
     <div className="flex items-center gap-3 rounded-2xl border bg-card p-3 text-sm">
       <span className="text-2xl">📲</span>
       <div className="flex-1">
-        <p className="font-semibold">Instala {APP_SHORT_NAME}</p>
+        <p className="font-semibold">{t.install.title(APP_SHORT_NAME)}</p>
         {deferred ? (
-          <p className="text-muted-foreground">
-            Ábrela desde tu pantalla de inicio, como una app.
-          </p>
+          <p className="text-muted-foreground">{t.install.openFromHome}</p>
         ) : (
           <p className="text-muted-foreground">
-            Pulsa <Share className="inline size-4 align-text-bottom" />{" "}
-            Compartir y luego «Añadir a pantalla de inicio».
+            {t.install.tap}{" "}
+            <Share className="inline size-4 align-text-bottom" />{" "}
+            {t.install.shareThenAdd}
           </p>
         )}
       </div>
@@ -160,13 +162,13 @@ export function InstallPrompt() {
             if (outcome === "dismissed") dismiss();
           }}
         >
-          Instalar
+          {t.install.buttonShort}
         </Button>
       )}
       <Button
         variant="ghost"
         size="icon"
-        aria-label="No mostrar más"
+        aria-label={t.install.dismiss}
         onClick={dismiss}
       >
         <X />

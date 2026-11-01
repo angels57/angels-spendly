@@ -1,4 +1,11 @@
 import { toISODate } from "@/lib/parser";
+import type { Locale } from "@/i18n/config";
+import { DICTIONARIES } from "@/i18n/dictionaries";
+
+/** Locale de Intl para fechas: "en" → "en-US" ("Oct 26"), "es" → "es". */
+export function dateLocale(locale: Locale) {
+  return locale === "en" ? "en-US" : "es";
+}
 
 // Zona horaria del usuario. El servidor corre en UTC: sin ella, en
 // Colombia a las 7 de la noche del 31 de octubre ya sería noviembre.
@@ -50,14 +57,16 @@ export function fromISODate(iso: string) {
   return new Date(y, m - 1, d);
 }
 
-export function dayLabel(iso: string, now = new Date()) {
+export function dayLabel(iso: string, locale: Locale, now = new Date()) {
+  const { today: todayLabel, yesterday: yesterdayLabel } =
+    DICTIONARIES[locale].common;
   const today = toISODate(now);
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (iso === today) return "Hoy";
-  if (iso === toISODate(yesterday)) return "Ayer";
+  if (iso === today) return todayLabel;
+  if (iso === toISODate(yesterday)) return yesterdayLabel;
   const date = fromISODate(iso);
-  return new Intl.DateTimeFormat("es", {
+  return new Intl.DateTimeFormat(dateLocale(locale), {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -69,8 +78,10 @@ export function startOfMonthISO(now = new Date()) {
   return toISODate(new Date(now.getFullYear(), now.getMonth(), 1));
 }
 
-export function monthLabel(now = new Date()) {
-  return new Intl.DateTimeFormat("es", { month: "long" }).format(now);
+export function monthLabel(locale: Locale, now = new Date()) {
+  return new Intl.DateTimeFormat(dateLocale(locale), { month: "long" }).format(
+    now,
+  );
 }
 
 // Meses como "YYYY-MM" en la URL (?month=2026-10).
@@ -95,10 +106,10 @@ export function homeMonth(param: unknown, now = new Date()) {
 }
 
 /** "octubre" en el año actual, "diciembre de 2025" en otro. */
-export function shortMonthTitle(month: Date, now = new Date()) {
+export function shortMonthTitle(month: Date, locale: Locale, now = new Date()) {
   return month.getFullYear() === now.getFullYear()
-    ? monthLabel(month)
-    : monthTitle(month);
+    ? monthLabel(locale, month)
+    : monthTitle(month, locale);
 }
 
 export function addMonths(month: Date, delta: number) {
@@ -113,8 +124,8 @@ export function monthRange(month: Date) {
   };
 }
 
-export function monthTitle(month: Date) {
-  return new Intl.DateTimeFormat("es", {
+export function monthTitle(month: Date, locale: Locale) {
+  return new Intl.DateTimeFormat(dateLocale(locale), {
     month: "long",
     year: "numeric",
   }).format(month);

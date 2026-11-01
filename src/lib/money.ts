@@ -1,19 +1,24 @@
+import type { Locale } from "@/i18n/config";
+
 // Montos: en la base son numeric(12,2); en el cliente se opera en centavos
 // (enteros) para evitar errores de coma flotante como 0.1 + 0.2.
 
-// Monedas que se pueden elegir. Se formatean como en Colombia ("$ 12.000",
-// "US$ 12,00", "MXN 12,00"), así "$" solo es el peso colombiano; el euro,
-// a la española ("12,00 €").
+// Monedas que se pueden elegir (los nombres, por idioma, en los
+// diccionarios). Formato según el idioma de la interfaz:
+// - es: como en Colombia ("$ 12.000", "US$ 12,00", "MXN 12,00"), así "$"
+//   solo es el peso colombiano; el euro, a la española ("12,00 €").
+// - en: en-US ("COP 12,000", "$12.00", "€12.00"): el símbolo solo cuando
+//   no es ambiguo, si no el código.
 export const CURRENCIES = {
-  COP: { name: "Peso colombiano", locale: "es-CO", decimals: 0 },
-  USD: { name: "Dólar estadounidense", locale: "es-CO", decimals: 2 },
-  EUR: { name: "Euro", locale: "es-ES", decimals: 2 },
-  MXN: { name: "Peso mexicano", locale: "es-CO", decimals: 2 },
-  PEN: { name: "Sol peruano", locale: "es-CO", decimals: 2 },
-  CLP: { name: "Peso chileno", locale: "es-CO", decimals: 0 },
-  ARS: { name: "Peso argentino", locale: "es-CO", decimals: 2 },
-  BRL: { name: "Real brasileño", locale: "es-CO", decimals: 2 },
-  GBP: { name: "Libra esterlina", locale: "es-CO", decimals: 2 },
+  COP: { es: "es-CO", decimals: 0 },
+  USD: { es: "es-CO", decimals: 2 },
+  EUR: { es: "es-ES", decimals: 2 },
+  MXN: { es: "es-CO", decimals: 2 },
+  PEN: { es: "es-CO", decimals: 2 },
+  CLP: { es: "es-CO", decimals: 0 },
+  ARS: { es: "es-CO", decimals: 2 },
+  BRL: { es: "es-CO", decimals: 2 },
+  GBP: { es: "es-CO", decimals: 2 },
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCIES;
@@ -44,14 +49,15 @@ export function fromCents(cents: number): number {
   return cents / 100;
 }
 
-export function formatMoney(
-  cents: number,
-  currency: string = DEFAULT_CURRENCY,
-) {
-  const { locale, decimals } = isCurrencyCode(currency)
-    ? CURRENCIES[currency]
-    : { locale: "es-CO", decimals: 2 };
-  return new Intl.NumberFormat(locale, {
+export function formatMoney(cents: number, currency: string, locale: Locale) {
+  const decimals = currencyDecimals(currency);
+  const intlLocale =
+    locale === "en"
+      ? "en-US"
+      : isCurrencyCode(currency)
+        ? CURRENCIES[currency].es
+        : "es-CO";
+  return new Intl.NumberFormat(intlLocale, {
     style: "currency",
     currency,
     minimumFractionDigits: decimals,
@@ -63,47 +69,65 @@ export function currencyDecimals(currency: string) {
   return isCurrencyCode(currency) ? CURRENCIES[currency].decimals : 2;
 }
 
-/** Monto para un campo de texto: "12.000" en COP, "1.234,50" en USD. */
-export function formatAmountInput(cents: number, currency: string) {
+// Separadores al escribir montos: "1.234,50" en español, "1,234.50" en inglés.
+const SEPARATORS: Record<Locale, { group: string; decimal: string }> = {
+  en: { group: ",", decimal: "." },
+  es: { group: ".", decimal: "," },
+};
+
+/** Monto para un campo de texto: "12.000" / "12,000" en COP, "1.234,50" / "1,234.50" en USD. */
+export function formatAmountInput(
+  cents: number,
+  currency: string,
+  locale: Locale,
+) {
+  const { group, decimal } = SEPARATORS[locale];
   const value = fromCents(cents);
   const decimals =
     currencyDecimals(currency) === 0 && Number.isInteger(value) ? 0 : 2;
   const [int, dec] = value.toFixed(decimals).split(".");
-  return dec ? `${groupThousands(int)},${dec}` : groupThousands(int);
+  const grouped = groupThousands(int, group);
+  return dec ? `${grouped}${decimal}${dec}` : grouped;
 }
 
 /**
- * Da formato a un monto mientras se escribe: "45000" → "45.000",
- * "1234,5" → "1.234,5". La coma es el decimal; un punto recién escrito al
- * final también ("12." → "12,"), para teclados que solo tienen punto. Los
- * demás puntos son de miles y se recalculan. Sin decimales (COP, CLP) solo
- * quedan dígitos.
+ * Da formato a un monto mientras se escribe: "45000" → "45.000" (es) o
+ * "45,000" (en). El separador decimal del idioma es el decimal; el otro, si
+ * se acaba de escribir al final, también ("12." → "12," en español), para
+ * teclados que solo tienen uno. El resto son miles y se recalculan. Sin
+ * decimales (COP, CLP) solo quedan dígitos.
  */
-export function formatAmountTyping(raw: string, currency: string) {
+export function formatAmountTyping(
+  raw: string,
+  currency: string,
+  locale: Locale,
+) {
+  const { group, decimal } = SEPARATORS[locale];
   const decimals = currencyDecimals(currency);
   let text = raw.replace(/[^\d.,]/g, "");
-  // Sin decimales, lo que va tras la coma se descarta ("45.000,5" → "45.000").
-  if (decimals === 0 && text.includes(","))
-    text = text.slice(0, text.indexOf(","));
-  if (decimals > 0 && !text.includes(",") && text.endsWith(".")) {
-    text = `${text.slice(0, -1)},`;
+  // Sin decimales, lo que va tras el decimal se descarta ("45.000,5" → "45.000").
+  if (decimals === 0 && text.includes(decimal)) {
+    text = text.slice(0, text.indexOf(decimal));
   }
-  const comma = decimals > 0 ? text.indexOf(",") : -1;
-  const intDigits = (comma === -1 ? text : text.slice(0, comma)).replace(
+  if (decimals > 0 && !text.includes(decimal) && text.endsWith(group)) {
+    text = `${text.slice(0, -1)}${decimal}`;
+  }
+  const point = decimals > 0 ? text.indexOf(decimal) : -1;
+  const intDigits = (point === -1 ? text : text.slice(0, point)).replace(
     /\D/g,
     "",
   );
   const int = intDigits.replace(/^0+(?=\d)/, "");
-  if (comma === -1) return groupThousands(int);
+  if (point === -1) return groupThousands(int, group);
   const dec = text
-    .slice(comma + 1)
+    .slice(point + 1)
     .replace(/\D/g, "")
     .slice(0, decimals);
-  return `${groupThousands(int || "0")},${dec}`;
+  return `${groupThousands(int || "0", group)}${decimal}${dec}`;
 }
 
-function groupThousands(digits: string) {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+function groupThousands(digits: string, group: string) {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, group);
 }
 
 export type CurrencyTotals = {

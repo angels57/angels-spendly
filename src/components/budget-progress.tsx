@@ -9,8 +9,9 @@ import {
 import type { Category } from "@/lib/data";
 import type { BudgetStatus } from "@/lib/budgets";
 import { formatMoney } from "@/lib/money";
+import { getDictionary, getLocalHref, getLocale } from "@/i18n/server";
 
-export function BudgetProgress({
+export async function BudgetProgress({
   statuses,
   categories,
   currency,
@@ -22,16 +23,17 @@ export function BudgetProgress({
   /** "octubre" si se muestra un mes pasado. */
   pastMonth?: string;
 }) {
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
+  const locale = await getLocale();
   // En un mes pasado no se invita a crear presupuestos.
   if (statuses.length === 0 && pastMonth) return null;
   if (statuses.length === 0) {
     return (
       <Link
-        href="/categories"
+        href={to("/categories")}
         className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted"
       >
-        💡 Ponle un presupuesto mensual a tus categorías para saber cuánto te
-        queda.
+        {t.budgets.hint}
       </Link>
     );
   }
@@ -41,11 +43,11 @@ export function BudgetProgress({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Presupuestos</CardTitle>
+        <CardTitle>{t.budgets.title}</CardTitle>
         {/* Los presupuestos no guardan historial: se usa el de hoy. */}
         {pastMonth && (
           <CardDescription className="first-letter:uppercase">
-            {pastMonth}, con tu presupuesto actual
+            {t.budgets.pastMonth(pastMonth)}
           </CardDescription>
         )}
       </CardHeader>
@@ -65,13 +67,17 @@ export function BudgetProgress({
                     className={`shrink-0 tabular-nums ${over ? "font-bold text-destructive" : "text-muted-foreground"}`}
                   >
                     {over
-                      ? `+${formatMoney(-s.remainingCents, currency)} de más`
-                      : `Quedan ${formatMoney(s.remainingCents, currency)}`}
+                      ? t.budgets.over(
+                          formatMoney(-s.remainingCents, currency, locale),
+                        )
+                      : t.budgets.left(
+                          formatMoney(s.remainingCents, currency, locale),
+                        )}
                   </span>
                 </div>
                 <div
                   role="progressbar"
-                  aria-label={`${category.name}: ${formatMoney(s.spentCents, currency)} de ${formatMoney(s.budgetCents, currency)}`}
+                  aria-label={`${category.name}: ${t.budgets.spentOf(formatMoney(s.spentCents, currency, locale), formatMoney(s.budgetCents, currency, locale))}`}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(s.ratio * 100)}
@@ -88,8 +94,10 @@ export function BudgetProgress({
                   />
                 </div>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {formatMoney(s.spentCents, currency)} de{" "}
-                  {formatMoney(s.budgetCents, currency)}
+                  {t.budgets.spentOf(
+                    formatMoney(s.spentCents, currency, locale),
+                    formatMoney(s.budgetCents, currency, locale),
+                  )}
                 </span>
               </li>
             );

@@ -1,0 +1,133 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { connection } from "next/server";
+import { Repeat } from "lucide-react";
+import { z } from "zod";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ManualAdd } from "@/components/manual-add";
+import { TransactionFilters } from "@/components/transaction-filters";
+import { TransactionList } from "@/components/transaction-list";
+import { getActiveList, getCategories, getTransactions } from "@/lib/data";
+import {
+  addMonths,
+  monthParam,
+  monthRange,
+  monthTitle,
+  parseMonthParam,
+} from "@/lib/dates";
+import { toISODate } from "@/lib/parser";
+import { userNow } from "@/lib/today";
+import { OtherCurrencies } from "@/components/month-summary";
+import { formatMoney, totalsByCurrency } from "@/lib/money";
+import { getDictionary, getLocalHref, getLocale } from "@/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getDictionary()).meta.transactions };
+}
+
+export default function TransactionsPage({
+  searchParams,
+}: PageProps<"/[lang]/transactions">) {
+  return (
+    <Suspense fallback={<Skeleton className="h-96 rounded-xl" />}>
+      <TransactionsView searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function TransactionsView({
+  searchParams,
+}: Pick<PageProps<"/[lang]/transactions">, "searchParams">) {
+  const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
+  const locale = await getLocale();
+  // El mes por defecto depende de la fecha actual.
+  await connection();
+  const [params, now] = await Promise.all([searchParams, userNow()]);
+  const month = parseMonthParam(params.month, now);
+  const q = typeof params.q === "string" ? params.q.trim().slice(0, 100) : "";
+  // Un id inválido haría fallar la consulta: se ignora.
+  const category =
+    params.category === "none" || z.uuid().safeParse(params.category).success
+      ? (params.category as string)
+      : "";
+
+  const list = await getActiveList();
+  const [categories, transactions] = await Promise.all([
+    getCategories(list.id),
+    getTransactions(list.id, {
+      ...monthRange(month),
+      q: q || undefined,
+      categoryId: category || undefined,
+    }),
+  ]);
+
+  const [{ spentCents: spent, incomeCents: income }, ...others] =
+    totalsByCurrency(transactions, list.currency);
+
+  const current = parseMonthParam(undefined, now);
+  const next = addMonths(month, 1);
+  const filtered = Boolean(q || category);
+
+  return (
+    <div className="flex flex-col gap-5 pb-8">
+      <TransactionFilters
+        // Al cambiar de mes o filtro desde fuera, el buscador se reinicia.
+        key={`${monthParam(month)}|${category}`}
+        filters={{ month: monthParam(month), q, category }}
+        monthTitle={monthTitle(month, locale)}
+        prevMonth={monthParam(addMonths(month, -1))}
+        nextMonth={next <= current ? monthParam(next) : null}
+        categories={categories}
+      />
+
+      <div className="flex flex-col gap-0.5">
+        <p className="text-sm text-muted-foreground">
+          {t.transactions.count(transactions.length)}
+          {spent > 0 && (
+            <>
+              {" · "}
+              <span className="font-semibold text-foreground">
+                −{formatMoney(spent, list.currency, locale)}
+              </span>
+            </>
+          )}
+          {income > 0 && (
+            <>
+              {" · "}
+              <span className="font-semibold text-emerald-600">
+                +{formatMoney(income, list.currency, locale)}
+              </span>
+            </>
+          )}
+        </p>
+        {others.length > 0 && <OtherCurrencies totals={others} />}
+      </div>
+
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <ManualAdd categories={categories} currency={list.currency} />
+        </div>
+        <Link
+          href={to("/recurring")}
+          className="flex h-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
+        >
+          <Repeat className="size-4" />
+          {t.transactions.recurring}
+        </Link>
+      </div>
+
+      <TransactionList
+        transactions={transactions}
+        categories={categories}
+        currency={list.currency}
+        today={toISODate(now)}
+        empty={
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {filtered ? t.transactions.noMatches : t.transactions.emptyMonth}
+          </p>
+        }
+      />
+    </div>
+  );
+}

@@ -24,17 +24,19 @@ import {
   type CurrencyTotals,
   type CurrencyCode,
 } from "@/lib/money";
+import { getDictionary, getLocalHref, getLocale } from "@/i18n/server";
 
 const MAX_BARS = 5;
 
 /** El inicio en ese mes; el actual, sin parámetro. */
-function homeHref(month: Date, now: Date) {
+async function homeHref(month: Date, now: Date) {
+  const to = await getLocalHref();
   return month.getTime() === parseMonthParam(undefined, now).getTime()
-    ? "/"
-    : `/?month=${monthParam(month)}`;
+    ? to("/")
+    : `${to("/")}?month=${monthParam(month)}`;
 }
 
-export function MonthSummary({
+export async function MonthSummary({
   transactions,
   currency,
   month,
@@ -47,42 +49,45 @@ export function MonthSummary({
   /** Ahora, en la zona horaria del usuario. */
   now: Date;
 }) {
+  const [t, locale, to] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getLocalHref(),
+  ]);
   const currentMonth = parseMonthParam(undefined, now);
   const isCurrent = month.getTime() === currentMonth.getTime();
-  const title = shortMonthTitle(month, now);
+  const title = shortMonthTitle(month, locale, now);
+  const [prevHref, nextHref] = await Promise.all([
+    homeHref(addMonths(month, -1), now),
+    homeHref(addMonths(month, 1), now),
+  ]);
   let spent = 0;
   let income = 0;
   const byCategory = new Map<
     string,
-    {
-      id: string;
-      name: string;
-      emoji: string;
-      color: string;
-      cents: number;
-    }
+    { id: string; name: string; emoji: string; color: string; cents: number }
   >();
 
   // Sin tipos de cambio, los totales y las barras son de la moneda
   // principal; el resto se muestra aparte.
   const others = totalsByCurrency(transactions, currency).slice(1);
 
-  for (const t of transactions) {
-    if (t.currency !== currency) continue;
-    if (t.category?.kind === "income") {
-      income += t.amountCents;
+  for (const tx of transactions) {
+    if (tx.currency !== currency) continue;
+    if (tx.category?.kind === "income") {
+      income += tx.amountCents;
       continue;
     }
-    spent += t.amountCents;
-    const key = t.categoryId ?? "none";
+    spent += tx.amountCents;
+    const key = tx.categoryId ?? "none";
     const entry = byCategory.get(key) ?? {
       id: key,
-      name: t.category?.name ?? "Sin categoría",
-      emoji: t.category?.emoji ?? "💸",
-      color: t.category?.color ?? NO_CATEGORY_COLOR,
+      name: tx.category?.name ?? t.common.uncategorized,
+      emoji: tx.category?.emoji ?? "💸",
+      color: tx.category?.color ?? NO_CATEGORY_COLOR,
       cents: 0,
     };
-    entry.cents += t.amountCents;
+    entry.cents += tx.amountCents;
     byCategory.set(key, entry);
   }
 
@@ -97,12 +102,12 @@ export function MonthSummary({
     <Card>
       <CardHeader>
         <CardDescription className="first-letter:uppercase">
-          Gastado en {title}
+          {t.home.spentIn(title)}
         </CardDescription>
         <CardAction className="-mt-2 -mr-2 flex">
           <Link
-            href={homeHref(addMonths(month, -1), now)}
-            aria-label="Mes anterior"
+            href={prevHref}
+            aria-label={t.filters.previousMonth}
             className={arrowClass}
           >
             <ChevronLeft className="size-5" />
@@ -112,8 +117,8 @@ export function MonthSummary({
             <span className="size-10" />
           ) : (
             <Link
-              href={homeHref(addMonths(month, 1), now)}
-              aria-label="Mes siguiente"
+              href={nextHref}
+              aria-label={t.filters.nextMonth}
               className={arrowClass}
             >
               <ChevronRight className="size-5" />
@@ -121,37 +126,37 @@ export function MonthSummary({
           )}
         </CardAction>
         <CardTitle className="text-4xl font-extrabold tracking-tight">
-          {formatMoney(spent, currency)}
+          {formatMoney(spent, currency, locale)}
         </CardTitle>
         {income > 0 && (
           <p className="text-sm font-semibold text-emerald-600">
-            +{formatMoney(income, currency)} de ingresos
+            {t.home.income(formatMoney(income, currency, locale))}
           </p>
         )}
         {others.length > 0 && <OtherCurrencies totals={others} />}
         {!isCurrent && (
           <Link
-            href="/"
+            href={to("/")}
             className="text-sm font-semibold text-primary first-letter:uppercase"
           >
-            Volver a {monthLabel(currentMonth)}
+            {t.home.backTo(monthLabel(locale, currentMonth))}
           </Link>
         )}
       </CardHeader>
       <CardContent>
         {bars.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            {isCurrent
-              ? "Aún no hay gastos este mes. Escribe el primero abajo 👇"
-              : `No hubo gastos en ${title}.`}
+            {isCurrent ? t.home.empty : t.home.emptyPast(title)}
           </p>
         ) : (
           <div className="flex h-44 items-end justify-center gap-3">
             {bars.map((bar) => (
               <Link
                 key={bar.id}
-                href={`/transactions?month=${monthParam(month)}&category=${bar.id}`}
-                aria-label={`Ver ${bar.name} en ${title}`}
+                href={to(
+                  `/transactions?month=${monthParam(month)}&category=${bar.id}`,
+                )}
+                aria-label={t.home.seeCategory(bar.name, title)}
                 className="flex h-full max-w-20 min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-2xl transition-opacity hover:opacity-80"
               >
                 <div
@@ -180,7 +185,7 @@ export function MonthSummary({
 
 /** "Octubre cerró en $1.240.000 · 8 % menos que septiembre", los primeros
  * días del mes, mientras el actual aún está casi vacío. */
-export function MonthClosing({
+export async function MonthClosing({
   month,
   previousMonth,
   spentCents,
@@ -196,25 +201,32 @@ export function MonthClosing({
   now: Date;
 }) {
   if (spentCents === 0) return null;
+  const [t, locale, href] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    homeHref(month, now),
+  ]);
   const change = percentChange(spentCents, previousSpentCents);
-  const previous = shortMonthTitle(previousMonth, now);
 
   return (
     <Link
-      href={homeHref(month, now)}
+      href={href}
       className="flex items-center gap-3 rounded-2xl border bg-card p-3 text-sm transition-colors hover:bg-muted"
     >
       <span className="text-2xl">🗓️</span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="font-semibold first-letter:uppercase">
-          {shortMonthTitle(month, now)} cerró en{" "}
-          {formatMoney(spentCents, currency)}
+          {t.home.closed(
+            shortMonthTitle(month, locale, now),
+            formatMoney(spentCents, currency, locale),
+          )}
         </span>
         {change !== null && (
           <span className="text-muted-foreground">
-            {change === 0
-              ? `Igual que ${previous}`
-              : `${Math.abs(change)} % ${change < 0 ? "menos" : "más"} que ${previous}`}
+            {t.home.vsPrevious(
+              change,
+              shortMonthTitle(previousMonth, locale, now),
+            )}
           </span>
         )}
       </span>
@@ -224,14 +236,24 @@ export function MonthClosing({
 }
 
 /** "Además: US$ 20,00 · +12,00 €" */
-export function OtherCurrencies({ totals }: { totals: CurrencyTotals[] }) {
+export async function OtherCurrencies({
+  totals,
+}: {
+  totals: CurrencyTotals[];
+}) {
+  const t = await getDictionary();
+  const locale = await getLocale();
   const parts = totals.flatMap((t) => [
-    ...(t.spentCents > 0 ? [formatMoney(t.spentCents, t.currency)] : []),
+    ...(t.spentCents > 0
+      ? [formatMoney(t.spentCents, t.currency, locale)]
+      : []),
     ...(t.incomeCents > 0
-      ? [`+${formatMoney(t.incomeCents, t.currency)}`]
+      ? [`+${formatMoney(t.incomeCents, t.currency, locale)}`]
       : []),
   ]);
   return (
-    <p className="text-sm text-muted-foreground">Además: {parts.join(" · ")}</p>
+    <p className="text-sm text-muted-foreground">
+      {t.home.otherCurrencies(parts.join(" · "))}
+    </p>
   );
 }

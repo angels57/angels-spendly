@@ -5,14 +5,16 @@ import { ArrowUp, CalendarDays, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createTransaction } from "@/app/(app)/actions";
+import { createTransaction } from "@/app/[lang]/(app)/actions";
 import type { Category, TransactionRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseExpense } from "@/lib/parser";
+import { useT, useLocale } from "@/i18n/provider";
 
-const FALLBACK_CATEGORY = "Otros";
+// Si el texto no indica categoría: la de "otros" (nombre por idioma).
+const FALLBACK_CATEGORIES = ["Other", "Otros"];
 
 export function QuickAdd({
   categories,
@@ -30,6 +32,8 @@ export function QuickAdd({
   /** Muestra el gasto en la lista al instante, antes de que se confirme. */
   onOptimistic?: (transaction: TransactionRow) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [text, setText] = useState("");
   // La categoría que elige el usuario a mano gana a la que adivina el parser.
   const [pickedCategoryId, setPickedCategoryId] = useState<string | null>(null);
@@ -40,7 +44,7 @@ export function QuickAdd({
     [text, categories],
   );
   const fallbackId =
-    categories.find((c) => c.name === FALLBACK_CATEGORY)?.id ?? null;
+    categories.find((c) => FALLBACK_CATEGORIES.includes(c.name))?.id ?? null;
   const categoryId = pickedCategoryId ?? parsed?.categoryId ?? fallbackId;
   const category = categories.find((c) => c.id === categoryId);
   // "netflix 15 usd" → USD; sin moneda escrita, la de la lista.
@@ -67,7 +71,9 @@ export function QuickAdd({
     event.preventDefault();
     if (!parsed) return;
     if (parsed.amountCents === null) {
-      toast.error("Falta el monto", { description: "Por ejemplo: comida 12" });
+      toast.error(t.quickAdd.missingAmount, {
+        description: t.quickAdd.missingAmountHint,
+      });
       return;
     }
     const amountCents = parsed.amountCents;
@@ -104,13 +110,16 @@ export function QuickAdd({
         source: "text",
       });
       if (!result.ok) {
-        toast.error(result.message);
+        toast.error(t.errors[result.error]);
         setText(typed.text);
         setPickedCategoryId(typed.pickedCategoryId);
         return;
       }
       toast.success(
-        `${category?.emoji ?? "💸"} ${formatMoney(amountCents, entry)} guardado`,
+        t.quickAdd.saved(
+          category?.emoji ?? "💸",
+          formatMoney(amountCents, entry, locale),
+        ),
       );
     });
   }
@@ -133,15 +142,15 @@ export function QuickAdd({
             }`}
           >
             {parsed.amountCents === null
-              ? "¿Monto?"
-              : `${category?.kind === "income" ? "+" : ""}${formatMoney(parsed.amountCents, entryCurrency)}`}
+              ? t.quickAdd.amountUnknown
+              : `${category?.kind === "income" ? "+" : ""}${formatMoney(parsed.amountCents, entryCurrency, locale)}`}
           </span>
           <span className="flex h-9 items-center gap-1 rounded-full bg-muted px-3">
             <CalendarDays className="size-3.5" />
-            {dayLabel(parsed.date)}
+            {dayLabel(parsed.date, locale)}
           </span>
           <label className="relative">
-            <span className="sr-only">Categoría</span>
+            <span className="sr-only">{t.quickAdd.category}</span>
             <select
               value={categoryId ?? ""}
               onChange={(e) => setPickedCategoryId(e.target.value || null)}
@@ -149,7 +158,9 @@ export function QuickAdd({
               className="h-9 cursor-pointer appearance-none rounded-full pr-7 pl-3 text-base font-semibold text-neutral-900"
               style={{ background: category?.color ?? NO_CATEGORY_COLOR }}
             >
-              {!categoryId && <option value="">Sin categoría</option>}
+              {!categoryId && (
+                <option value="">{t.common.uncategorized}</option>
+              )}
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.emoji} {c.name}
@@ -167,8 +178,12 @@ export function QuickAdd({
               }`}
             >
               {remainingAfter < 0
-                ? `+${formatMoney(-remainingAfter, currency)} sobre el presupuesto`
-                : `Quedarán ${formatMoney(remainingAfter, currency)}`}
+                ? t.quickAdd.overBudget(
+                    formatMoney(-remainingAfter, currency, locale),
+                  )
+                : t.quickAdd.willRemain(
+                    formatMoney(remainingAfter, currency, locale),
+                  )}
             </span>
           )}
         </div>
@@ -177,8 +192,8 @@ export function QuickAdd({
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="comida 12 ayer"
-          aria-label="Nuevo gasto"
+          placeholder={t.quickAdd.placeholder}
+          aria-label={t.quickAdd.label}
           autoComplete="off"
           enterKeyHint="send"
           className="h-12 rounded-2xl border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
@@ -186,7 +201,7 @@ export function QuickAdd({
         <Button
           type="submit"
           size="icon"
-          aria-label="Guardar gasto"
+          aria-label={t.quickAdd.save}
           // Sin bloquear mientras se guarda: se pueden encadenar gastos.
           disabled={!parsed}
           className="size-11 shrink-0 rounded-2xl"

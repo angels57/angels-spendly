@@ -3,10 +3,10 @@ import {
   type TransactionGroup,
 } from "@/components/transaction-groups";
 import type { Category, TransactionRow } from "@/lib/data";
-import { dayLabel, fromISODate } from "@/lib/dates";
 import type { CurrencyCode } from "@/lib/money";
 
-// Agrupa por día en el servidor; la interacción (editar/borrar) es cliente.
+// Agrupa por día; la etiqueta del día ("Hoy", "Mon, Oct 26") y la
+// interacción (editar/borrar) van en TransactionGroups, que es cliente.
 export function TransactionList({
   transactions,
   categories,
@@ -27,7 +27,6 @@ export function TransactionList({
   for (const t of transactions) {
     const group = groups.get(t.occurredOn) ?? {
       day: t.occurredOn,
-      label: dayLabel(t.occurredOn, fromISODate(today)),
       items: [],
     };
     group.items.push(t);
@@ -36,6 +35,7 @@ export function TransactionList({
 
   return (
     <TransactionGroups
+      today={today}
       groups={[...groups.values()]}
       categories={categories}
       currency={currency}

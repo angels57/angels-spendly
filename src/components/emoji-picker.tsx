@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { EMOJI_GROUPS, isSingleEmoji } from "@/lib/emoji";
+import { useT } from "@/i18n/provider";
 
 /**
  * Cuadrícula de emojis por temas, con el sugerido para el nombre arriba y
@@ -27,6 +28,7 @@ export function EmojiPicker({
       (g.emojis as readonly string[]).includes(value),
     ),
   );
+  const t = useT();
   const [groupIndex, setGroupIndex] = useState(initialGroup);
   const [custom, setCustom] = useState("");
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export function EmojiPicker({
     <div className="flex flex-col gap-3 rounded-2xl border p-3">
       {suggestion && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Sugerido:</span>
+          <span className="text-muted-foreground">{t.emoji.suggested}</span>
           <EmojiButton
             emoji={suggestion}
             selected={value === suggestion}
@@ -65,13 +67,13 @@ export function EmojiPicker({
       <div
         ref={tabsRef}
         role="tablist"
-        aria-label="Temas"
+        aria-label={t.emoji.themes}
         // Fila deslizable en horizontal; -mx/px para que llegue al borde.
         className="-mx-3 flex [scrollbar-width:none] gap-1.5 overflow-x-auto px-3 pb-1"
       >
         {EMOJI_GROUPS.map((g, i) => (
           <button
-            key={g.label}
+            key={g.id}
             type="button"
             role="tab"
             aria-selected={i === groupIndex}
@@ -84,14 +86,14 @@ export function EmojiPicker({
             )}
           >
             <span aria-hidden>{g.emojis[0]}</span>
-            {g.label}
+            {t.emoji.groups[g.id]}
           </button>
         ))}
       </div>
 
       <div
         role="tabpanel"
-        aria-label={group.label}
+        aria-label={t.emoji.groups[group.id]}
         className="grid grid-cols-7 gap-1"
       >
         {group.emojis.map((emoji) => (
@@ -107,7 +109,7 @@ export function EmojiPicker({
 
       <label className="flex flex-col gap-1">
         <span className="text-xs font-semibold text-muted-foreground">
-          ¿Otro? Escríbelo o pégalo
+          {t.emoji.other}
         </span>
         <Input
           value={custom}
@@ -116,12 +118,12 @@ export function EmojiPicker({
             if (isSingleEmoji(e.target.value)) onSelect(e.target.value.trim());
           }}
           maxLength={16}
-          placeholder="Por ejemplo 🦜"
+          placeholder={t.emoji.otherPlaceholder}
           aria-invalid={customInvalid || undefined}
           className="h-11"
         />
         {customInvalid && (
-          <span className="text-xs text-destructive">Solo un emoji.</span>
+          <span className="text-xs text-destructive">{t.emoji.onlyOne}</span>
         )}
       </label>
     </div>
@@ -139,12 +141,13 @@ function EmojiButton({
   used: boolean;
   onSelect: (emoji: string) => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       aria-label={emoji}
       aria-pressed={selected}
-      title={used ? "Ya lo usa otra categoría" : undefined}
+      title={used ? t.emoji.usedElsewhere : undefined}
       onClick={() => onSelect(emoji)}
       className={cn(
         "flex aspect-square min-h-11 items-center justify-center rounded-xl text-2xl transition-colors hover:bg-muted",

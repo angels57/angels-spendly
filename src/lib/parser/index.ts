@@ -23,11 +23,11 @@ export type ParsedExpense = {
 type Span = { start: number; end: number };
 
 const CURRENCY_BEFORE = String.raw`(?:(?:us\$|[$€£])\s?)`;
-const CURRENCY_AFTER = String.raw`(?:\s?(?:de\s+)?(?:us\$|[€$£]|(?:usd|cop|mxn|eur(?:os?)?|d[oó]lar(?:es)?|pesos?|libras?)\b))`;
+const CURRENCY_AFTER = String.raw`(?:\s?(?:de\s+)?(?:us\$|[€$£]|(?:usd|cop|mxn|eur(?:os?)?|d[oó]lar(?:es)?|dollars?|bucks?|pesos?|libras?|pounds?)\b))`;
 // 1.234,56 · 1,234.56 · 45,50 · 45.50 · 12
 const NUMBER = String.raw`\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?`;
-// "25 mil", "25k", "1,5 millones": habituales en pesos.
-const MULTIPLIER = String.raw`(?:\s?(?:k|mil|mill[oó]n(?:es)?)\b)`;
+// "25 mil", "25k", "1,5 millones", "2 thousand", "1.5 million", "3 grand".
+const MULTIPLIER = String.raw`(?:\s?(?:mill[oó]n(?:es)?|millions?|thousand|grand|mil|k)\b)`;
 const AMOUNT_RE = new RegExp(
   String.raw`(?<![\d/.,])(${CURRENCY_BEFORE})?(${NUMBER})(${MULTIPLIER})?(${CURRENCY_AFTER})?(?![\d/]|[.,]\d)`,
   "gi",
@@ -107,8 +107,8 @@ function multiplier(word: string | undefined) {
 function currencyOf(marker: string): CurrencyCode | null {
   const m = normalize(marker);
   if (/€|eur/.test(m)) return "EUR";
-  if (/us\$|usd|dolar/.test(m)) return "USD";
-  if (/£|libra/.test(m)) return "GBP";
+  if (/us\$|usd|dolar|dollar|buck/.test(m)) return "USD";
+  if (/£|libra|pound/.test(m)) return "GBP";
   if (/cop/.test(m)) return "COP";
   if (/mxn/.test(m)) return "MXN";
   return null;

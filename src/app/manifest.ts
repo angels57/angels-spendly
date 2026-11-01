@@ -1,12 +1,18 @@
 import type { MetadataRoute } from "next";
-import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
+import { APP_NAME, APP_SHORT_NAME } from "@/lib/brand";
+import { DEFAULT_LOCALE } from "@/i18n/config";
+import { DICTIONARIES } from "@/i18n/dictionaries";
+
+// Un solo manifest por instalación: en el idioma por defecto (inglés). Las
+// URLs van sin idioma para que el proxy lleve a cada persona al suyo.
+const t = DICTIONARIES[DEFAULT_LOCALE];
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
     short_name: APP_SHORT_NAME,
-    description: APP_TAGLINE,
-    lang: "es",
+    description: t.meta.tagline,
+    lang: DEFAULT_LOCALE,
     start_url: "/",
     scope: "/",
     display: "standalone",
@@ -26,8 +32,8 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
     shortcuts: [
-      { name: "Movimientos", url: "/transactions" },
-      { name: "Categorías", url: "/categories" },
+      { name: t.nav.transactions, url: "/transactions" },
+      { name: t.nav.categories, url: "/categories" },
     ],
   };
 }

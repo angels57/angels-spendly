@@ -1,0 +1,14 @@
+<!-- Plantilla de Supabase Auth (recovery). El idioma sale de los metadatos
+     de la cuenta (.Data.locale): "es" → español; cualquier otro → inglés. -->
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1d1b29;">
+  <p style="font-size: 20px; font-weight: 700; margin: 0 0 16px;">Angel’s Spendly</p>
+{{ if eq .Data.locale "es" }}
+  <p style="font-size: 16px; line-height: 1.5;">Pulsa el botón para elegir una contraseña nueva.</p>
+  <p style="margin: 24px 0;"><a href="{{ .ConfirmationURL }}" style="background: #6a60d6; color: #ffffff; padding: 12px 20px; border-radius: 12px; text-decoration: none; font-weight: 600;">Elegir contraseña nueva</a></p>
+  <p style="font-size: 13px; color: #6f6c80;">Si no pediste cambiar tu contraseña, puedes ignorar este correo.</p>
+{{ else }}
+  <p style="font-size: 16px; line-height: 1.5;">Tap the button to choose a new password.</p>
+  <p style="margin: 24px 0;"><a href="{{ .ConfirmationURL }}" style="background: #6a60d6; color: #ffffff; padding: 12px 20px; border-radius: 12px; text-decoration: none; font-weight: 600;">Choose a new password</a></p>
+  <p style="font-size: 13px; color: #6f6c80;">If you didn't ask to change your password, you can ignore this email.</p>
+{{ end }}
+</div>
