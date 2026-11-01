@@ -121,6 +121,7 @@ export const en = {
     exportHint: "CSV file for Excel or Google Sheets.",
     install: (app: string) => `Install ${app}`,
     signOut: "Sign out",
+    voice: "Voice",
   },
   auth: {
     submit: {
@@ -163,6 +164,40 @@ export const en = {
     saved: (emoji: string, amount: string) => `${emoji} ${amount} saved`,
     overBudget: (amount: string) => `+${amount} over budget`,
     willRemain: (amount: string) => `${amount} will be left`,
+  },
+  voice: {
+    // Botón de micrófono del quick add.
+    dictate: "Dictate expense",
+    stop: "Stop and transcribe",
+    transcribing: "Transcribing",
+    downloading: (percent: number) => `Downloading voice model, ${percent}%`,
+    downloadTitle: "Voice input",
+    downloadPrompt: (mb: number) =>
+      `This needs a one-time ~${mb} MB download. Wi-Fi recommended.`,
+    download: "Download",
+    downloaded: "Ready: you can now dictate your expenses",
+    downloadFailed: "Couldn't download the voice model",
+    loadFailed: "Couldn't load the voice model",
+    checkConnection: "Check your connection and try again.",
+    noMic: "No microphone access",
+    noMicHint: "Allow it in your browser settings.",
+    nothingHeard: "I didn't catch that",
+    tryAgain: "Try again.",
+    transcribeFailed: "Couldn't transcribe the audio",
+    // Ajustes.
+    title: "On-device AI",
+    description:
+      "Dictate your expenses with the microphone. Your voice is processed on this device and never leaves it, but the model downloads the first time.",
+    checking: "Checking your device…",
+    supported: "Your browser can use voice input offline.",
+    unsupported: "This browser can't run AI models.",
+    models: { speech: "Voice input" },
+    ready: (device: string) => `Ready · ${device}`,
+    modelReady: (label: string) => `${label}: ready`,
+    loadError: "Couldn't load",
+    used: (mb: string) => `${mb} MB used on this device`,
+    delete: "Delete",
+    deleted: "Models removed from this device",
   },
   transactionForm: {
     newTitle: "New transaction",

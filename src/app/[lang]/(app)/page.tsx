@@ -8,6 +8,7 @@ import { DashboardFeed } from "@/components/dashboard-feed";
 import {
   getActiveList,
   getCategories,
+  getCategoryHistory,
   getTransactions,
   type TransactionRow,
 } from "@/lib/data";
@@ -61,20 +62,27 @@ async function Dashboard({
   const monthBefore = addMonths(currentMonth, -2);
   const showClosing = isCurrent && now.getDate() <= CLOSING_DAYS;
 
-  const [categories, monthTransactions, currentTransactions, closing, recent] =
-    await Promise.all([
-      getCategories(list.id),
-      getTransactions(list.id, monthRange(month)),
-      isCurrent ? null : getTransactions(list.id, monthRange(currentMonth)),
-      // El mes pasado y el anterior, para compararlos.
-      showClosing
-        ? getTransactions(list.id, {
-            from: monthRange(monthBefore).from,
-            to: monthRange(currentMonth).from,
-          })
-        : null,
-      getTransactions(list.id, { limit: RECENT_LIMIT }),
-    ]);
+  const [
+    categories,
+    monthTransactions,
+    currentTransactions,
+    closing,
+    recent,
+    history,
+  ] = await Promise.all([
+    getCategories(list.id),
+    getTransactions(list.id, monthRange(month)),
+    isCurrent ? null : getTransactions(list.id, monthRange(currentMonth)),
+    // El mes pasado y el anterior, para compararlos.
+    showClosing
+      ? getTransactions(list.id, {
+          from: monthRange(monthBefore).from,
+          to: monthRange(currentMonth).from,
+        })
+      : null,
+    getTransactions(list.id, { limit: RECENT_LIMIT }),
+    getCategoryHistory(list.id),
+  ]);
 
   // Los presupuestos están en la moneda principal.
   const expenses = (transactions: TransactionRow[]) =>
@@ -124,6 +132,7 @@ async function Dashboard({
           )
         }
         categories={categories}
+        history={history}
         currency={list.currency}
         today={toISODate(now)}
         month={monthParam(currentMonth)}

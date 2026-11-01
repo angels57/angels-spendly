@@ -5,12 +5,13 @@ import { ArrowUp, CalendarDays, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VoiceButton } from "@/components/voice-button";
 import { createTransaction } from "@/app/[lang]/(app)/actions";
 import type { Category, TransactionRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";
-import { parseExpense } from "@/lib/parser";
+import { parseExpense, type CategoryHistory } from "@/lib/parser";
 import { useT, useLocale } from "@/i18n/provider";
 
 // Si el texto no indica categoría: la de "otros" (nombre por idioma).
@@ -18,12 +19,15 @@ const FALLBACK_CATEGORIES = ["Other", "Otros"];
 
 export function QuickAdd({
   categories,
+  history,
   currency,
   month,
   spentThisMonth,
   onOptimistic,
 }: {
   categories: Category[];
+  /** Categorías aprendidas de los movimientos guardados. */
+  history: CategoryHistory;
   currency: CurrencyCode;
   /** Mes actual "YYYY-MM": el presupuesto solo aplica a gastos de este mes. */
   month: string;
@@ -37,11 +41,14 @@ export function QuickAdd({
   const [text, setText] = useState("");
   // La categoría que elige el usuario a mano gana a la que adivina el parser.
   const [pickedCategoryId, setPickedCategoryId] = useState<string | null>(null);
+  // El texto vino del micrófono (aunque luego se corrija a mano).
+  const [fromVoice, setFromVoice] = useState(false);
   const [, startTransition] = useTransition();
 
   const parsed = useMemo(
-    () => (text.trim() ? parseExpense(text, categories) : null),
-    [text, categories],
+    () =>
+      text.trim() ? parseExpense(text, categories, new Date(), history) : null,
+    [text, categories, history],
   );
   const fallbackId =
     categories.find((c) => FALLBACK_CATEGORIES.includes(c.name))?.id ?? null;
@@ -65,6 +72,7 @@ export function QuickAdd({
   function reset() {
     setText("");
     setPickedCategoryId(null);
+    setFromVoice(false);
   }
 
   function submit(event: React.FormEvent) {
@@ -78,7 +86,7 @@ export function QuickAdd({
     }
     const amountCents = parsed.amountCents;
     const entry = entryCurrency;
-    const typed = { text, pickedCategoryId };
+    const typed = { text, pickedCategoryId, fromVoice };
     // El cuadro se vacía al momento para poder seguir escribiendo; si el
     // guardado falla, lo escrito vuelve.
     reset();
@@ -107,12 +115,13 @@ export function QuickAdd({
         date: parsed.date,
         categoryId,
         note: parsed.note,
-        source: "text",
+        source: typed.fromVoice ? "voice" : "text",
       });
       if (!result.ok) {
         toast.error(t.errors[result.error]);
         setText(typed.text);
         setPickedCategoryId(typed.pickedCategoryId);
+        setFromVoice(typed.fromVoice);
         return;
       }
       toast.success(
@@ -197,6 +206,14 @@ export function QuickAdd({
           autoComplete="off"
           enterKeyHint="send"
           className="h-12 rounded-2xl border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
+        />
+        <VoiceButton
+          onText={(spoken) => {
+            // Vista previa como siempre: se revisa y se guarda con Enter.
+            setText(spoken);
+            setPickedCategoryId(null);
+            setFromVoice(true);
+          }}
         />
         <Button
           type="submit"

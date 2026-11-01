@@ -5,6 +5,7 @@ import { ChevronRight, Download, LogOut, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SettingsSkeleton } from "@/components/skeletons";
 import { CurrencySettings } from "@/components/currency-settings";
+import { OnDeviceAISettings } from "@/components/on-device-ai-settings";
 import { InstallRow, LanguageSelect, ThemeSelect } from "@/components/settings";
 import { signOut } from "@/app/[lang]/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
@@ -66,6 +67,10 @@ async function Settings() {
         <RowLink href={to("/recurring")} icon={<Repeat className="size-5" />}>
           {t.settings.recurring}
         </RowLink>
+      </Section>
+
+      <Section title={t.settings.voice}>
+        <OnDeviceAISettings />
       </Section>
 
       <Section title={t.settings.data}>

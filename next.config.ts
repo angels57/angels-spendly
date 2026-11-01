@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // runonweb (IA en el navegador) se publica como TypeScript sin compilar.
+  transpilePackages: ["runonweb"],
   experimental: {
     // Detecta la pérdida de conexión (useOffline) y reintenta navegaciones
     // y Server Actions al volver: un gasto guardado offline no se pierde

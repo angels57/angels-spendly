@@ -46,6 +46,7 @@ export function parseExpense(
   input: string,
   categories: ParserCategory[],
   now: Date = new Date(),
+  history?: CategoryHistory,
 ): ParsedExpense {
   const text = input.trim();
   const amount = findAmount(text);
@@ -58,7 +59,7 @@ export function parseExpense(
     amountCents: amount?.cents ?? null,
     currency: amount?.currency ?? null,
     date: toISODate(date?.date ?? now),
-    categoryId: findCategory(rest, categories),
+    categoryId: findCategory(rest, categories, history),
     note: capitalize(rest),
   };
 }
@@ -130,7 +131,8 @@ function toCents(raw: string): number {
 // Fecha ---------------------------------------------------------------------
 
 const RELATIVE_DAYS: [RegExp, number][] = [
-  [/\b(?:anteayer|antier|antes de ayer|day before yesterday)\b/i, -2],
+  // "ante ayer" separado es como lo escribe el dictado por voz.
+  [/\b(?:ante ?ayer|antier|antes de ayer|day before yesterday)\b/i, -2],
   [/\b(?:ayer|yesterday)\b/i, -1],
   [/\b(?:hoy|today)\b/i, 0],
 ];
@@ -170,13 +172,27 @@ function findDate(text: string, now: Date): { date: Date; span: Span } | null {
 
 // Categoría -----------------------------------------------------------------
 
+// Orden: la misma nota ya guardada (respeta las correcciones del usuario),
+// luego nombre y palabras clave, y por último palabras del historial.
 function findCategory(
   note: string,
   categories: ParserCategory[],
+  history?: CategoryHistory,
 ): string | null {
-  const words = normalize(note)
-    .split(/[^a-z0-9ñ]+/)
-    .filter(Boolean);
+  const known = new Set(categories.map((c) => c.id));
+  const learned = (key: string) => {
+    const id =
+      history && Object.hasOwn(history.words, key) ? history.words[key] : null;
+    return id && known.has(id) ? id : null;
+  };
+
+  const noteKey = normalize(note).trim();
+  if (history && Object.hasOwn(history.notes, noteKey)) {
+    const id = history.notes[noteKey]!;
+    if (known.has(id)) return id;
+  }
+
+  const words = wordsOf(note);
   // En orden de aparición: la primera palabra reconocida manda.
   for (const word of words) {
     for (const category of categories) {
@@ -184,7 +200,103 @@ function findCategory(
       if (terms.some((term) => sameWord(word, term))) return category.id;
     }
   }
+  for (const word of words) {
+    for (const form of forms(word)) {
+      const id = learned(form);
+      if (id) return id;
+    }
+  }
   return null;
+}
+
+// Historial -----------------------------------------------------------------
+
+/**
+ * Categorías aprendidas de los movimientos guardados: por nota completa
+ * ("tinto" → Café) y por palabra ("sushi con Ana" → Comida por "sushi").
+ * Objetos simples para poder pasarlos de un Server Component al cliente.
+ */
+export type CategoryHistory = {
+  notes: Record<string, string>;
+  words: Record<string, string>;
+};
+
+export type HistoryEntry = { note: string; categoryId: string };
+
+// Palabras que no dicen nada de la categoría.
+const STOPWORDS = new Set(
+  "a al con de del el en la las lo los mi mis para por un una y the and of for with".split(
+    " ",
+  ),
+);
+
+/**
+ * `entries` de la más reciente a la más antigua. Gana la categoría más
+ * usada; si empatan, la más reciente. Una palabra solo se aprende si más
+ * de la mitad de las veces fue a la misma categoría: "Ana" en "almuerzo
+ * con Ana" y "regalo para Ana" no debe decidir nada.
+ */
+export function learnCategories(entries: HistoryEntry[]): CategoryHistory {
+  const notes = new Map<string, Map<string, number>>();
+  const words = new Map<string, Map<string, number>>();
+  const vote = (
+    table: Map<string, Map<string, number>>,
+    key: string,
+    categoryId: string,
+  ) => {
+    const counts = table.get(key) ?? new Map<string, number>();
+    counts.set(categoryId, (counts.get(categoryId) ?? 0) + 1);
+    table.set(key, counts);
+  };
+
+  for (const { note, categoryId } of entries) {
+    const noteKey = normalize(note).trim();
+    if (!noteKey) continue;
+    vote(notes, noteKey, categoryId);
+    const keys = new Set(
+      wordsOf(note).flatMap((word) =>
+        STOPWORDS.has(word) || /^\d+$/.test(word) ? [] : forms(word),
+      ),
+    );
+    for (const key of keys) {
+      // forms("es") incluye "e" y "": no sirven como palabra.
+      if (key.length >= 2) vote(words, key, categoryId);
+    }
+  }
+
+  return {
+    notes: winners(notes, false),
+    words: winners(words, true),
+  };
+}
+
+function winners(
+  table: Map<string, Map<string, number>>,
+  needMajority: boolean,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, counts] of table) {
+    let best: string | null = null;
+    let bestCount = 0;
+    let total = 0;
+    // Map conserva el orden de inserción: el primero es el más reciente,
+    // así que con ">" estricto gana en los empates.
+    for (const [categoryId, count] of counts) {
+      total += count;
+      if (count > bestCount) {
+        best = categoryId;
+        bestCount = count;
+      }
+    }
+    if (best && (!needMajority || bestCount * 2 > total)) result[key] = best;
+  }
+  return result;
+}
+
+function wordsOf(text: string) {
+  return normalize(text)
+    .split(/[^a-z0-9ñ]+/)
+    .filter(Boolean);
 }
 
 function sameWord(word: string, term: string) {

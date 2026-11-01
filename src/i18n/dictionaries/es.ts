@@ -123,6 +123,7 @@ export const es: Dictionary = {
     exportHint: "Archivo CSV para Excel o Google Sheets.",
     install: (app: string) => `Instalar ${app}`,
     signOut: "Cerrar sesión",
+    voice: "Voz",
   },
   auth: {
     submit: {
@@ -165,6 +166,40 @@ export const es: Dictionary = {
     saved: (emoji: string, amount: string) => `${emoji} ${amount} guardado`,
     overBudget: (amount: string) => `+${amount} sobre el presupuesto`,
     willRemain: (amount: string) => `Quedarán ${amount}`,
+  },
+  voice: {
+    // Botón de micrófono del quick add.
+    dictate: "Dictar gasto",
+    stop: "Detener y transcribir",
+    transcribing: "Transcribiendo",
+    downloading: (percent: number) => `Descargando modelo de voz, ${percent}%`,
+    downloadTitle: "Dictar por voz",
+    downloadPrompt: (mb: number) =>
+      `Hay que descargar un modelo de ~${mb} MB una sola vez. Mejor con WiFi.`,
+    download: "Descargar",
+    downloaded: "Listo: ya puedes dictar tus gastos",
+    downloadFailed: "No se pudo descargar el modelo de voz",
+    loadFailed: "No se pudo cargar el modelo de voz",
+    checkConnection: "Revisa la conexión e inténtalo de nuevo.",
+    noMic: "Sin acceso al micrófono",
+    noMicHint: "Permítelo en la configuración del navegador.",
+    nothingHeard: "No entendí nada",
+    tryAgain: "Prueba otra vez.",
+    transcribeFailed: "No se pudo transcribir el audio",
+    // Ajustes.
+    title: "IA en el dispositivo",
+    description:
+      "Dicta tus gastos con el micrófono. La voz se procesa en tu celular y no sale de él, pero el modelo se descarga la primera vez.",
+    checking: "Comprobando tu dispositivo…",
+    supported: "Tu navegador puede usar la voz sin conexión.",
+    unsupported: "Este navegador no puede ejecutar modelos de IA.",
+    models: { speech: "Dictar gastos por voz" },
+    ready: (device: string) => `Listo · ${device}`,
+    modelReady: (label: string) => `${label}: listo`,
+    loadError: "Error al cargar",
+    used: (mb: string) => `Ocupan ${mb} MB en este dispositivo`,
+    delete: "Borrar",
+    deleted: "Modelos borrados de este dispositivo",
   },
   transactionForm: {
     newTitle: "Nuevo movimiento",
