@@ -18,12 +18,13 @@ import {
 } from "@/lib/dates";
 import { OtherCurrencies } from "@/components/month-summary";
 import { formatMoney, totalsByCurrency } from "@/lib/money";
+import { getLocalHref } from "@/i18n/server";
 
 export const metadata: Metadata = { title: "Movimientos" };
 
 export default function TransactionsPage({
   searchParams,
-}: PageProps<"/transactions">) {
+}: PageProps<"/[lang]/transactions">) {
   return (
     <Suspense fallback={<Skeleton className="h-96 rounded-xl" />}>
       <TransactionsView searchParams={searchParams} />
@@ -33,7 +34,8 @@ export default function TransactionsPage({
 
 async function TransactionsView({
   searchParams,
-}: Pick<PageProps<"/transactions">, "searchParams">) {
+}: Pick<PageProps<"/[lang]/transactions">, "searchParams">) {
+  const to = await getLocalHref();
   // El mes por defecto depende de la fecha actual.
   await connection();
   const params = await searchParams;
@@ -103,7 +105,7 @@ async function TransactionsView({
           <ManualAdd categories={categories} currency={list.currency} />
         </div>
         <Link
-          href="/recurring"
+          href={to("/recurring")}
           className="flex h-11 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold hover:bg-muted"
         >
           <Repeat className="size-4" />

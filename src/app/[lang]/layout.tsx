@@ -4,8 +4,12 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardInset } from "@/components/keyboard-inset";
 import { OfflineBanner, ServiceWorkerRegistration } from "@/components/pwa";
-import "./globals.css";
+import "../globals.css";
 import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
+import { LOCALES } from "@/i18n/config";
+import { DICTIONARIES } from "@/i18n/dictionaries";
+import { I18nProvider } from "@/i18n/provider";
+import { getLocale } from "@/i18n/server";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -45,22 +49,31 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Con cacheComponents cada parámetro raíz necesita al menos un valor: así
+// las páginas se pre-renderizan por idioma. Otro valor (/fr/…) da 404.
+export function generateStaticParams() {
+  return LOCALES.map((lang) => ({ lang }));
+}
+
+export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
+  const locale = await getLocale();
   return (
     // next-themes añade la clase "dark" antes de hidratar.
     <html
-      lang="es"
+      lang={locale}
       suppressHydrationWarning
       className={`${nunito.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <OfflineBanner />
-          {children}
-          {/* Arriba: abajo taparía el quick add en el celular. */}
-          <Toaster position="top-center" />
-          <ServiceWorkerRegistration />
-          <KeyboardInset />
+          <I18nProvider locale={locale} dictionary={DICTIONARIES[locale]}>
+            <OfflineBanner />
+            {children}
+            {/* Arriba: abajo taparía el quick add en el celular. */}
+            <Toaster position="top-center" />
+            <ServiceWorkerRegistration />
+            <KeyboardInset />
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

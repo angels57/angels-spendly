@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { buttonVariants } from "@/components/ui/button";
 import { APP_SHORT_NAME } from "@/lib/brand";
+import { getLocalHref } from "@/i18n/server";
 
 export const metadata: Metadata = { title: "Sin conexión" };
 
 // Página estática: el service worker la guarda al instalarse y la muestra
 // cuando una navegación falla por falta de red.
-export default function OfflinePage() {
+export default async function OfflinePage() {
+  const to = await getLocalHref();
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center">
       <span className="text-5xl">📡</span>
@@ -17,8 +19,10 @@ export default function OfflinePage() {
       </p>
       {/* Recarga completa (no el router del cliente): el service worker sirve
           esta página en lugar de otra que no pudo cargarse. */}
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      <a href="/" className={buttonVariants({ size: "lg", className: "h-11" })}>
+      <a
+        href={to("/")}
+        className={buttonVariants({ size: "lg", className: "h-11" })}
+      >
         Reintentar
       </a>
     </main>

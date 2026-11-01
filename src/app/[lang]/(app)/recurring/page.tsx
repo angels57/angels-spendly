@@ -5,15 +5,17 @@ import { ChevronLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecurringManager } from "@/components/recurring-manager";
 import { getActiveList, getCategories, getRecurring } from "@/lib/data";
+import { getLocalHref } from "@/i18n/server";
 
 export const metadata: Metadata = { title: "Recurrentes" };
 
-export default function RecurringPage() {
+export default async function RecurringPage() {
+  const to = await getLocalHref();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1">
         <Link
-          href="/transactions"
+          href={to("/transactions")}
           aria-label="Volver a movimientos"
           className="rounded-full p-2 hover:bg-muted"
         >

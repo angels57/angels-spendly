@@ -16,7 +16,7 @@ import {
   deleteTransaction,
   restoreTransaction,
   updateTransaction,
-} from "@/app/(app)/actions";
+} from "@/app/[lang]/(app)/actions";
 import type { Category, TransactionRow } from "@/lib/data";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";
 import { formatMoney, type CurrencyCode } from "@/lib/money";

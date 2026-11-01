@@ -5,8 +5,9 @@ import { AppNav } from "@/components/app-nav";
 import { InstallPrompt } from "@/components/pwa";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActiveList, getCurrentUser } from "@/lib/data";
+import { getLocalHref } from "@/i18n/server";
 
-export default function AppLayout({ children }: LayoutProps<"/">) {
+export default function AppLayout({ children }: LayoutProps<"/[lang]">) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6">
       <div className="flex flex-col gap-4">
@@ -23,6 +24,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
 }
 
 async function AppHeader() {
+  const to = await getLocalHref();
   const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
   return (
     <header className="flex items-center gap-3">
@@ -35,7 +37,7 @@ async function AppHeader() {
       </div>
       {/* Tema, moneda, exportar y cerrar sesión viven en Ajustes. */}
       <Link
-        href="/settings"
+        href={to("/settings")}
         aria-label="Ajustes"
         className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >

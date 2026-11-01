@@ -3,6 +3,8 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { asCurrencyCode, toCents, type CurrencyCode } from "@/lib/money";
+import { localizePath } from "@/i18n/config";
+import { getRequestLocale } from "@/i18n/request";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -79,7 +81,9 @@ export const getCurrentUser = cache(async () => {
   await connection();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  if (!data?.claims) redirect("/login");
+  if (!data?.claims) {
+    redirect(localizePath(await getRequestLocale(), "/login"));
+  }
   return { id: data.claims.sub, email: data.claims.email as string };
 });
 

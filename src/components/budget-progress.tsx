@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Category } from "@/lib/data";
 import type { BudgetStatus } from "@/lib/budgets";
 import { formatMoney } from "@/lib/money";
+import { getLocalHref } from "@/i18n/server";
 
-export function BudgetProgress({
+export async function BudgetProgress({
   statuses,
   categories,
   currency,
@@ -13,10 +14,11 @@ export function BudgetProgress({
   categories: Category[];
   currency: string;
 }) {
+  const to = await getLocalHref();
   if (statuses.length === 0) {
     return (
       <Link
-        href="/categories"
+        href={to("/categories")}
         className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground hover:bg-muted"
       >
         💡 Ponle un presupuesto mensual a tus categorías para saber cuánto te

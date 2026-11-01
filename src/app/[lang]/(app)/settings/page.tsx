@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CurrencySettings } from "@/components/currency-settings";
 import { InstallRow, ThemeSelect } from "@/components/settings";
-import { signOut } from "@/app/login/actions";
+import { signOut } from "@/app/[lang]/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
 import { APP_SHORT_NAME } from "@/lib/brand";
+import { getLocalHref } from "@/i18n/server";
 
 export const metadata: Metadata = { title: "Ajustes" };
 
@@ -21,6 +22,7 @@ export default function SettingsPage() {
 }
 
 async function Settings() {
+  const to = await getLocalHref();
   const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
 
   return (
@@ -51,14 +53,14 @@ async function Settings() {
           <span className="text-sm font-semibold">Tema</span>
           <ThemeSelect />
         </div>
-        <RowLink href="/recurring" icon={<Repeat className="size-5" />}>
+        <RowLink href={to("/recurring")} icon={<Repeat className="size-5" />}>
           Movimientos recurrentes
         </RowLink>
       </Section>
 
       <Section title="Datos">
         <a
-          href="/settings/export"
+          href={to("/settings/export")}
           download
           className="flex min-h-14 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
         >

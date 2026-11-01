@@ -5,7 +5,7 @@ import { ArrowUp, CalendarDays, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createTransaction } from "@/app/(app)/actions";
+import { createTransaction } from "@/app/[lang]/(app)/actions";
 import type { Category, TransactionRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { NO_CATEGORY_COLOR } from "@/lib/schemas";

@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { selectClassName } from "@/components/transaction-form";
 import type { Category } from "@/lib/data";
+import { localizePath } from "@/i18n/config";
+import { useLocale, useLocalHref } from "@/i18n/provider";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -34,6 +36,8 @@ export function TransactionFilters({
   categories: Category[];
 }) {
   const router = useRouter();
+  const locale = useLocale();
+  const localHref = useLocalHref();
   const [q, setQ] = useState(filters.q);
   const { month, category } = filters;
 
@@ -41,18 +45,21 @@ export function TransactionFilters({
   useEffect(() => {
     if (q.trim() === filters.q) return;
     const timer = setTimeout(() => {
-      router.replace(filtersHref({ month, category, q: q.trim() }), {
-        scroll: false,
-      });
+      router.replace(
+        localizePath(locale, filtersHref({ month, category, q: q.trim() })),
+        {
+          scroll: false,
+        },
+      );
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [q, filters.q, month, category, router]);
+  }, [q, filters.q, month, category, router, locale]);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <Link
-          href={filtersHref({ ...filters, month: prevMonth })}
+          href={localHref(filtersHref({ ...filters, month: prevMonth }))}
           aria-label="Mes anterior"
           className="rounded-full p-3 hover:bg-muted"
         >
@@ -63,7 +70,7 @@ export function TransactionFilters({
         </h2>
         {nextMonth ? (
           <Link
-            href={filtersHref({ ...filters, month: nextMonth })}
+            href={localHref(filtersHref({ ...filters, month: nextMonth }))}
             aria-label="Mes siguiente"
             className="rounded-full p-3 hover:bg-muted"
           >
@@ -92,7 +99,9 @@ export function TransactionFilters({
             value={filters.category}
             onChange={(e) =>
               router.replace(
-                filtersHref({ ...filters, q, category: e.target.value }),
+                localHref(
+                  filtersHref({ ...filters, q, category: e.target.value }),
+                ),
                 { scroll: false },
               )
             }

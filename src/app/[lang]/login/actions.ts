@@ -4,7 +4,14 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
+import { localizePath } from "@/i18n/config";
+import { getRequestLocale } from "@/i18n/request";
 import { createClient } from "@/lib/supabase/server";
+
+/** Ruta en el idioma que se está viendo (las acciones no tienen root params). */
+async function localized(path: string) {
+  return localizePath(await getRequestLocale(), path);
+}
 
 type ErrorState = { status: "error"; message: string };
 
@@ -93,7 +100,7 @@ export async function signInWithPassword(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error)
     return authError(error, "No pudimos iniciar sesión. Inténtalo de nuevo.");
-  redirect("/");
+  redirect(await localized("/"));
 }
 
 export async function signUp(
@@ -116,7 +123,7 @@ export async function signUp(
     return authError(error, "No pudimos crear la cuenta. Inténtalo de nuevo.");
 
   // Sin confirmación por correo (lo configurado): sesión al momento.
-  if (data.session) redirect("/");
+  if (data.session) redirect(await localized("/"));
   // Solo si se activa "Confirm email" en Supabase: toca revisar el correo.
   return { status: "sent", email: parsed.data.email, reason: "signup" };
 }
@@ -130,7 +137,7 @@ export async function requestPasswordReset(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: await callbackUrl("/reset-password"),
+    redirectTo: await callbackUrl(await localized("/reset-password")),
   });
   if (error)
     return authError(error, "No pudimos enviar el correo. Inténtalo de nuevo.");
@@ -156,11 +163,11 @@ export async function updatePassword(
       error,
       "No pudimos guardar la contraseña. Inténtalo de nuevo.",
     );
-  redirect("/");
+  redirect(await localized("/"));
 }
 
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect(await localized("/login"));
 }

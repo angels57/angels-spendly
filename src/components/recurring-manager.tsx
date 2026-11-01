@@ -19,7 +19,7 @@ import {
   deleteRecurring,
   restoreRecurring,
   updateRecurring,
-} from "@/app/(app)/recurring/actions";
+} from "@/app/[lang]/(app)/recurring/actions";
 import type { Category, RecurringRow } from "@/lib/data";
 import { dayLabel } from "@/lib/dates";
 import { CurrencySelect } from "@/components/currency-select";

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CurrencySelect } from "@/components/currency-select";
-import { setListCurrency } from "@/app/(app)/actions";
+import { setListCurrency } from "@/app/[lang]/(app)/actions";
 import { CURRENCIES, type CurrencyCode } from "@/lib/money";
 
 /** Moneda principal de la lista: la de totales, barras y presupuestos. */

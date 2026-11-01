@@ -2,17 +2,30 @@
 //
 // - Los assets de /_next/static llevan hash en el nombre: cache-first.
 // - Las páginas van siempre a la red. Si no hay conexión se muestra
-//   /offline. No se guardan páginas con datos del usuario en caché: en un
+//   /{idioma}/offline. No se guardan páginas con datos del usuario en caché: en un
 //   dispositivo compartido quedarían visibles tras cerrar sesión.
 // - Las Server Actions (POST) y las peticiones RSC no se tocan; Next las
 //   reintenta solo al volver la conexión (experimental.useOffline).
 
-const VERSION = "v1";
+// v2: páginas offline por idioma (/en/offline, /es/offline).
+const VERSION = "v2";
 const STATIC_CACHE = `spendly-static-${VERSION}`;
 const SHELL_CACHE = `spendly-shell-${VERSION}`;
-const OFFLINE_URL = "/offline";
+// Se cachean con el prefijo: "/offline" es una redirección y una respuesta
+// redirigida no se puede servir como página.
+const OFFLINE_URLS = { en: "/en/offline", es: "/es/offline" };
 
-const SHELL = [OFFLINE_URL, "/icons/icon-192.png", "/manifest.webmanifest"];
+const SHELL = [
+  ...Object.values(OFFLINE_URLS),
+  "/icons/icon-192.png",
+  "/manifest.webmanifest",
+];
+
+/** La página offline en el idioma de la URL que falló (inglés por defecto). */
+function offlineUrlFor(url) {
+  const lang = url.pathname.split("/")[1];
+  return OFFLINE_URLS[lang] ?? OFFLINE_URLS.en;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -55,7 +68,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request).catch(async () => {
         const cache = await caches.open(SHELL_CACHE);
-        return (await cache.match(OFFLINE_URL)) ?? Response.error();
+        return (await cache.match(offlineUrlFor(url))) ?? Response.error();
       }),
     );
   }

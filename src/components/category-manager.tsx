@@ -21,7 +21,7 @@ import {
   deleteCategory,
   restoreCategory,
   updateCategory,
-} from "@/app/(app)/categories/actions";
+} from "@/app/[lang]/(app)/categories/actions";
 import type { CategoryWithCount } from "@/lib/data";
 import { DEFAULT_EMOJI, suggestEmoji } from "@/lib/emoji";
 import { normalizeKeyword, suggestKeywords } from "@/lib/keywords";

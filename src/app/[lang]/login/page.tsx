@@ -6,7 +6,9 @@ import Image from "next/image";
 
 export const metadata: Metadata = { title: "Entrar" };
 
-export default function LoginPage({ searchParams }: PageProps<"/login">) {
+export default function LoginPage({
+  searchParams,
+}: PageProps<"/[lang]/login">) {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8 px-4 py-10">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -30,7 +32,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 
 async function LoginFormWithParams({
   searchParams,
-}: Pick<PageProps<"/login">, "searchParams">) {
+}: Pick<PageProps<"/[lang]/login">, "searchParams">) {
   const { error } = await searchParams;
   return <LoginForm linkError={error === "link"} />;
 }

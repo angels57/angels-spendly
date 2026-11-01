@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updatePassword, type PasswordState } from "@/app/login/actions";
+import { updatePassword, type PasswordState } from "@/app/[lang]/login/actions";
 
 export function NewPasswordForm() {
   const [state, action, pending] = useActionState<PasswordState, FormData>(

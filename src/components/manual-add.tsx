@@ -11,7 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { TransactionForm } from "@/components/transaction-form";
-import { createTransaction } from "@/app/(app)/actions";
+import { createTransaction } from "@/app/[lang]/(app)/actions";
 import type { Category } from "@/lib/data";
 import type { CurrencyCode } from "@/lib/money";
 
