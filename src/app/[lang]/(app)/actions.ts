@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { asCurrencyCode, fromCents, toCents } from "@/lib/money";
 import { getActiveList, getCurrentUser } from "@/lib/data";
@@ -13,6 +14,7 @@ import type { ErrorCode } from "@/i18n/errors";
 import { hasLocale } from "@/i18n/config";
 import { setLocaleCookie } from "@/i18n/request";
 import { createClient } from "@/lib/supabase/server";
+import { sendBudgetAlert } from "@/lib/push/budget";
 
 // Las Server Actions se pueden llamar con un POST directo: siempre validar
 // sesión y datos aquí, no solo en el cliente. RLS limita además cada
@@ -48,6 +50,8 @@ export async function createTransaction(
   });
   if (error) return { ok: false, error: SAVE_ERROR };
 
+  const { categoryId, date } = parsed.data;
+  if (categoryId) after(() => sendBudgetAlert(supabase, categoryId, date));
   refresh();
   return { ok: true };
 }
@@ -77,6 +81,9 @@ export async function updateTransaction(
   // Sin filas: no existe o RLS lo oculta (no es de tus listas).
   if (error || data.length === 0) return { ok: false, error: SAVE_ERROR };
 
+  // Subir el importe o cambiar de categoría también puede cruzar el umbral.
+  const { categoryId, date } = parsed.data;
+  if (categoryId) after(() => sendBudgetAlert(supabase, categoryId, date));
   refresh();
   return { ok: true };
 }

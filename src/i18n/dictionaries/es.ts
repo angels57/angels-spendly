@@ -56,6 +56,9 @@ export const es: Dictionary = {
     email_send_failed: "No pudimos enviar el correo. Inténtalo de nuevo.",
     password_save_failed:
       "No pudimos guardar la contraseña. Inténtalo de nuevo.",
+    push_subscribe_failed:
+      "No se pudieron activar las notificaciones. Inténtalo de nuevo.",
+    push_send_failed: "No se pudo enviar la notificación.",
   },
   meta: {
     tagline: "Tus gastos, claros y sin esfuerzo.",
@@ -124,6 +127,55 @@ export const es: Dictionary = {
     install: (app: string) => `Instalar ${app}`,
     signOut: "Cerrar sesión",
     voice: "Voz",
+  },
+  notifications: {
+    title: "Notificaciones",
+    unsupported: "Este navegador no puede recibir notificaciones.",
+    installFirst: (app: string) =>
+      `En iPhone, añade ${app} a la pantalla de inicio y ábrela desde ahí para activar las notificaciones.`,
+    denied:
+      "Las notificaciones están bloqueadas. Permítelas para esta app en los ajustes del dispositivo.",
+    notConfigured:
+      "Las notificaciones aún no están configuradas en el servidor.",
+    enable: "Activar notificaciones",
+    enableHint: "Avisos de presupuesto, recurrentes y el resumen del mes.",
+    enabled: "Activadas en este dispositivo",
+    disable: "Desactivar",
+    sendTest: "Enviar una de prueba",
+    testSent: "Prueba enviada",
+    budget: "Avisos de presupuesto",
+    budgetHint: "Cuando una categoría llega al 80 % y al 100 %",
+    recurring: "Recurrentes",
+    recurringHint: "Cuando se registra uno automáticamente",
+    monthClose: "Resumen del mes",
+    monthCloseHint: "El día 1, cómo te fue el mes pasado",
+    daily: "Recordatorio diario",
+    dailyHint: "Solo si ese día no anotaste nada",
+    off: "Apagado",
+    hideAmounts: "Ocultar importes",
+    hideAmountsHint: "Los importes no se verán en la pantalla de bloqueo",
+  },
+  push: {
+    budgetTitle: (emoji: string, name: string, percent: number) =>
+      `${emoji} ${name}: llevas el ${percent} % del presupuesto`,
+    budgetOverTitle: (emoji: string, name: string) =>
+      `${emoji} ${name}: presupuesto agotado`,
+    budgetBody: (spent: string, budget: string) =>
+      `${spent} de ${budget} este mes`,
+    budgetBodyHidden: "Abre Spendly para ver cuánto te queda.",
+    recurringTitle: (emoji: string, note: string) =>
+      `${emoji} ${note} registrado`,
+    recurringBody: (amount: string) => `${amount} añadido automáticamente hoy`,
+    recurringBodyHidden: "Añadido automáticamente hoy",
+    dailyTitle: "¿Gastaste algo hoy?",
+    dailyBody: "Anótalo en 5 segundos: «café 5000»",
+    monthTitle: (month: string) => `${month} cerró`,
+    monthBody: (spent: string) => `Gastaste ${spent}`,
+    monthBodyChange: (spent: string, percent: number, previous: string) =>
+      `Gastaste ${spent} (${percent > 0 ? "+" : "−"}${Math.abs(percent)} % frente a ${previous})`,
+    monthBodyHidden: "Abre Spendly para ver el resumen del mes pasado.",
+    testTitle: "Notificaciones activadas",
+    testBody: "Así se verán los avisos de Spendly.",
   },
   auth: {
     submit: {

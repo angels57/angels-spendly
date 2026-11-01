@@ -222,3 +222,33 @@ export async function getRecurring(listId: string): Promise<RecurringRow[]> {
 function escapeLike(text: string) {
   return text.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
+
+export type NotificationPrefs = {
+  notifyBudget: boolean;
+  notifyRecurring: boolean;
+  notifyMonthClose: boolean;
+  notifyHideAmounts: boolean;
+  /** "HH:MM" en hora local, o null si el recordatorio está apagado. */
+  dailyReminderAt: string | null;
+};
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  const user = await getCurrentUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "notify_budget, notify_recurring, notify_month_close, notify_hide_amounts, daily_reminder_at",
+    )
+    .eq("id", user.id)
+    .single();
+  if (error) throw error;
+  return {
+    notifyBudget: data.notify_budget,
+    notifyRecurring: data.notify_recurring,
+    notifyMonthClose: data.notify_month_close,
+    notifyHideAmounts: data.notify_hide_amounts,
+    // Postgres devuelve "21:00:00".
+    dailyReminderAt: data.daily_reminder_at?.slice(0, 5) ?? null,
+  };
+}

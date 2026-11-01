@@ -51,7 +51,8 @@ function rememberLocale(response: NextResponse, locale: Locale) {
 
 export const config = {
   matcher: [
-    // Everything except static files, images and the PWA assets.
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except static files, images, the PWA assets and /api
+    // (no locale, no session: the push dispatcher is called by pg_cron).
+    "/((?!api/|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

@@ -54,6 +54,8 @@ export const en = {
     sign_up_failed: "Couldn't create the account. Try again.",
     email_send_failed: "Couldn't send the email. Try again.",
     password_save_failed: "Couldn't save the password. Try again.",
+    push_subscribe_failed: "Couldn't turn on notifications. Try again.",
+    push_send_failed: "Couldn't send the notification.",
   },
   meta: {
     tagline: "Your spending, clear and effortless.",
@@ -122,6 +124,55 @@ export const en = {
     install: (app: string) => `Install ${app}`,
     signOut: "Sign out",
     voice: "Voice",
+  },
+  notifications: {
+    title: "Notifications",
+    unsupported: "This browser can't receive notifications.",
+    installFirst: (app: string) =>
+      `On iPhone, add ${app} to your Home Screen and open it from there to turn on notifications.`,
+    denied:
+      "Notifications are blocked. Allow them for this app in your device settings.",
+    notConfigured: "Notifications aren't set up on the server yet.",
+    enable: "Turn on notifications",
+    enableHint: "Budget alerts, recurring items and the month summary.",
+    enabled: "On for this device",
+    disable: "Turn off",
+    sendTest: "Send a test",
+    testSent: "Test sent",
+    budget: "Budget alerts",
+    budgetHint: "When a category reaches 80% and 100%",
+    recurring: "Recurring items",
+    recurringHint: "When one is recorded automatically",
+    monthClose: "Month summary",
+    monthCloseHint: "On the 1st, how last month went",
+    daily: "Daily reminder",
+    dailyHint: "Only if you haven't logged anything that day",
+    off: "Off",
+    hideAmounts: "Hide amounts",
+    hideAmountsHint: "Amounts won't show on the lock screen",
+  },
+  /** Texto de los avisos push (llegan en el idioma de la cuenta). */
+  push: {
+    budgetTitle: (emoji: string, name: string, percent: number) =>
+      `${emoji} ${name}: ${percent}% of your budget`,
+    budgetOverTitle: (emoji: string, name: string) =>
+      `${emoji} ${name}: budget used up`,
+    budgetBody: (spent: string, budget: string) =>
+      `${spent} of ${budget} this month`,
+    budgetBodyHidden: "Open Spendly to see how much is left.",
+    recurringTitle: (emoji: string, note: string) =>
+      `${emoji} ${note} recorded`,
+    recurringBody: (amount: string) => `${amount} added automatically today`,
+    recurringBodyHidden: "Added automatically today",
+    dailyTitle: "Spent anything today?",
+    dailyBody: "Log it in 5 seconds: “coffee 5”",
+    monthTitle: (month: string) => `${month} is closed`,
+    monthBody: (spent: string) => `You spent ${spent}`,
+    monthBodyChange: (spent: string, percent: number, previous: string) =>
+      `You spent ${spent} (${percent > 0 ? "+" : "−"}${Math.abs(percent)}% vs ${previous})`,
+    monthBodyHidden: "Open Spendly to see last month’s summary.",
+    testTitle: "Notifications are on",
+    testBody: "This is how Spendly alerts will look.",
   },
   auth: {
     submit: {

@@ -175,30 +175,93 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_log: {
+        Row: {
+          key: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          key: string
+          sent_at?: string
+          user_id?: string
+        }
+        Update: {
+          key?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
+          daily_reminder_at: string | null
           default_currency: string
           display_name: string | null
           id: string
           locale: string
+          notify_budget: boolean
+          notify_hide_amounts: boolean
+          notify_month_close: boolean
+          notify_recurring: boolean
           time_zone: string
         }
         Insert: {
           created_at?: string
+          daily_reminder_at?: string | null
           default_currency?: string
           display_name?: string | null
           id: string
           locale?: string
+          notify_budget?: boolean
+          notify_hide_amounts?: boolean
+          notify_month_close?: boolean
+          notify_recurring?: boolean
           time_zone?: string
         }
         Update: {
           created_at?: string
+          daily_reminder_at?: string | null
           default_currency?: string
           display_name?: string | null
           id?: string
           locale?: string
+          notify_budget?: boolean
+          notify_hide_amounts?: boolean
+          notify_month_close?: boolean
+          notify_recurring?: boolean
           time_zone?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -350,7 +413,35 @@ export type Database = {
       }
       is_list_member: { Args: { p_list_id: string }; Returns: boolean }
       is_list_owner: { Args: { p_list_id: string }; Returns: boolean }
+      local_now: { Args: { p_time_zone: string }; Returns: string }
       local_today: { Args: { p_time_zone: string }; Returns: string }
+      push_budget_alert: {
+        Args: { p_category_id: string; p_occurred_on: string }
+        Returns: {
+          data: Json
+          hide_amounts: boolean
+          key: string
+          kind: string
+          locale: string
+          subscriptions: Json
+        }[]
+      }
+      push_due: {
+        Args: { p_secret: string }
+        Returns: {
+          data: Json
+          hide_amounts: boolean
+          key: string
+          kind: string
+          locale: string
+          subscriptions: Json
+          user_id: string
+        }[]
+      }
+      push_forget: {
+        Args: { p_endpoints: string[]; p_secret: string }
+        Returns: undefined
+      }
       recurrence_date: {
         Args: {
           p_first_day?: number

@@ -8,7 +8,12 @@ import { CurrencySettings } from "@/components/currency-settings";
 import { OnDeviceAISettings } from "@/components/on-device-ai-settings";
 import { InstallRow, LanguageSelect, ThemeSelect } from "@/components/settings";
 import { signOut } from "@/app/[lang]/login/actions";
-import { getActiveList, getCurrentUser } from "@/lib/data";
+import { PushSettings } from "@/components/push-settings";
+import {
+  getActiveList,
+  getCurrentUser,
+  getNotificationPrefs,
+} from "@/lib/data";
 import { APP_SHORT_NAME } from "@/lib/brand";
 import { getDictionary, getLocalHref } from "@/i18n/server";
 
@@ -26,7 +31,11 @@ export default function SettingsPage() {
 
 async function Settings() {
   const [to, t] = await Promise.all([getLocalHref(), getDictionary()]);
-  const [user, list] = await Promise.all([getCurrentUser(), getActiveList()]);
+  const [user, list, notificationPrefs] = await Promise.all([
+    getCurrentUser(),
+    getActiveList(),
+    getNotificationPrefs(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -67,6 +76,10 @@ async function Settings() {
         <RowLink href={to("/recurring")} icon={<Repeat className="size-5" />}>
           {t.settings.recurring}
         </RowLink>
+      </Section>
+
+      <Section title={t.notifications.title}>
+        <PushSettings prefs={notificationPrefs} />
       </Section>
 
       <Section title={t.settings.voice}>

@@ -14,7 +14,8 @@
 - **Recurrentes** (alquiler, suscripciones, sueldo): semanales, mensuales o anuales. Se generan solos cada día con `pg_cron`.
 - **Cuentas:** correo y contraseña, sin confirmar el correo; también recuperar contraseña y enlace mágico.
 - **PWA:** se instala en el móvil, funciona sin conexión con una página offline, y reintenta lo que guardaste sin red.
-- **Ajustes:** idioma, moneda principal, tema (claro, oscuro o el del sistema), recurrentes, exportar CSV, instalar la app y cerrar sesión.
+- **Notificaciones push:** avisos de presupuesto (al 80 % y al 100 %), recurrentes registrados, resumen del mes el día 1 y un recordatorio diario opcional; cada tipo se apaga en _Ajustes_, y se pueden ocultar los importes en la pantalla de bloqueo. En iPhone, con la app instalada (iOS 16.4+).
+- **Ajustes:** idioma, moneda principal, tema (claro, oscuro o el del sistema), notificaciones, recurrentes, exportar CSV, instalar la app y cerrar sesión.
 - Diseño pensado para móvil: deslizar movimientos y categorías para editar o borrar, guardado instantáneo en el quick add.
 
 ## Stack
@@ -45,6 +46,13 @@ npm run dev               # http://localhost:3000
 | App                       | http://localhost:3000  |
 | Supabase Studio (tablas)  | http://127.0.0.1:54323 |
 | Mailpit (correos locales) | http://127.0.0.1:54324 |
+
+**Notificaciones en local.** Añade a `.env.local` un par de claves de `npx web-push generate-vapid-keys`. El service worker solo se registra en producción, así que prueba con `npm run build && npm start`. Para que el cron local llame a tu app, apunta el dispatcher a ella (la migración deja la URL de producción, y desde allí un secreto local no sirve):
+
+```bash
+docker exec supabase_db_web psql -U postgres -c \
+  "update private.push_config set dispatch_url = 'http://host.docker.internal:3000/api/push/dispatch'"
+```
 
 ### Cuentas de prueba locales
 
@@ -87,7 +95,7 @@ En el panel de Supabase, _Authentication_:
 - **Emails → Templates:** pega las plantillas de `supabase/templates/` (enlace mágico, recuperación y confirmación). Son bilingües según el idioma de la cuenta; el asunto va en los dos idiomas. No uses `supabase config push` para esto: subiría también la configuración local.
 - **Emails → SMTP:** el SMTP incluido solo envía unos pocos correos por hora. Para recuperar contraseñas o usar el enlace mágico con usuarios reales, configura uno propio, por ejemplo Resend (`smtp.resend.com`, puerto 465).
 
-**App (Vercel).** Variables de entorno: `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Despliegue manual:
+**App (Vercel).** Variables de entorno: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (sin las dos últimas, las notificaciones aparecen como no configuradas). Despliegue manual:
 
 ```bash
 npx vercel deploy --prod
@@ -143,8 +151,9 @@ supabase/
 - **Formato de monedas:** en español, a la colombiana (`$ 12.000`, `US$ 12,00`, `12,00 €`), así `$` solo es el peso colombiano; en inglés, como en EE. UU. (`COP 12,000`, `$12.00`, `€12.00`).
 - **Seguridad:** todas las tablas tienen RLS y un usuario solo ve las listas de las que es miembro. Las Server Actions validan sesión y datos con Zod. El callback de auth solo redirige a rutas internas.
 - **Móvil y teclado:** `interactive-widget=resizes-content` hace que Android encoja la página al abrir el teclado. iOS lo ignora, así que `KeyboardInset` publica la altura del teclado en `--keyboard-inset` y los drawers suben por encima. Los campos usan 16 px o más para que iOS no haga zoom, y los botones miden unos 44 px.
-- **Recurrentes:** `generate_recurring()` crea los movimientos pendientes; `pg_cron` la ejecuta a las 00:15 UTC y la app la llama al crear un recurrente.
+- **Recurrentes:** `generate_recurring()` crea los movimientos pendientes; `pg_cron` la ejecuta cada hora (con la fecha local de cada usuario) y la app la llama al crear un recurrente.
 - **PWA:** `public/sw.js` cachea los assets y muestra `/{idioma}/offline` sin red; nunca guarda páginas con datos del usuario. Solo se registra en producción.
+- **Notificaciones push:** `web-push` con claves VAPID, sin servicios externos. Qué avisar lo decide Postgres: `push_budget_alert()` al guardar un gasto (en `after()`, sin retrasar la respuesta) y `push_due()` para recurrentes, recordatorio y cierre de mes, a la hora local de cada usuario. Cada aviso se reserva en `notification_log` con una clave única, así no se repite. `pg_cron` llama cada 15 minutos (con `pg_net`) a `/api/push/dispatch` con un secreto generado en la base de datos (`private.push_config`); la ruta no lo guarda, solo se lo pasa a `push_due()`, y no hace falta la clave de servicio. Las suscripciones que el servicio push da por muertas (404/410) se borran.
 - **Pre-commit:** Husky corre lint-staged (ESLint + Prettier) y los tests.
 
 ## Pendiente
@@ -152,4 +161,3 @@ supabase/
 - Tipos de cambio para sumar monedas distintas en un solo total.
 - IA para varios gastos en una frase, voz y foto del ticket.
 - Listas compartidas y suscripción.
-- Zona horaria del usuario: hoy “hoy” y el cron usan UTC.

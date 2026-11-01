@@ -1,0 +1,378 @@
+-- Notificaciones push: suscripciones del navegador, preferencias por tipo,
+-- registro de avisos enviados (para no repetir) y lo que dice qué toca
+-- enviar. El cifrado y el envío los hace la app (web-push, claves VAPID).
+--
+-- Quién dispara los avisos programados: pg_cron cada 15 minutos hace un
+-- POST (pg_net) a /api/push/dispatch con un secreto que solo existe aquí.
+-- La ruta lo reenvía a push_due(), que lo comprueba: la app no guarda el
+-- secreto ni necesita la clave de servicio.
+
+-- Suscripciones -----------------------------------------------------------
+
+create table public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index push_subscriptions_user_id_idx on public.push_subscriptions (user_id);
+
+alter table public.push_subscriptions enable row level security;
+
+create policy "push_subscriptions: las propias" on public.push_subscriptions
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+-- Preferencias ------------------------------------------------------------
+
+alter table public.profiles
+  add column notify_budget boolean not null default true,
+  add column notify_recurring boolean not null default true,
+  add column notify_month_close boolean not null default true,
+  -- Hora local del recordatorio diario; null = apagado.
+  add column daily_reminder_at time,
+  -- En la pantalla de bloqueo cualquiera los lee.
+  add column notify_hide_amounts boolean not null default false;
+
+-- Avisos enviados ---------------------------------------------------------
+
+-- key: "budget:80:<categoría>:2026-11", "recurring:<movimiento>",
+-- "daily:2026-11-01", "month:2026-10". Insertar la clave es "reservar" el
+-- aviso: si ya estaba, no se envía otra vez.
+create table public.notification_log (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  key text not null,
+  sent_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+
+alter table public.notification_log enable row level security;
+
+create policy "notification_log: ver los propios" on public.notification_log
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "notification_log: crear los propios" on public.notification_log
+  for insert to authenticated with check (user_id = (select auth.uid()));
+
+-- Configuración privada (fuera del esquema expuesto por la API) ------------
+
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+create table private.push_config (
+  id boolean primary key default true check (id),
+  -- Generado aquí y nunca impreso: dos uuid aleatorios (244 bits).
+  dispatch_secret text not null
+    default replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
+  -- null = no se dispara nada (en local se cambia en seed.sql).
+  dispatch_url text
+);
+
+insert into private.push_config (dispatch_url)
+values ('https://angels-spendly.vercel.app/api/push/dispatch');
+
+-- Helpers -----------------------------------------------------------------
+
+/** Ahora en la zona horaria dada (Bogotá si el nombre no existe). */
+create function public.local_now(p_time_zone text)
+returns timestamp
+language plpgsql
+stable
+set search_path = ''
+as $$
+begin
+  return now() at time zone p_time_zone;
+exception when others then
+  return now() at time zone 'America/Bogota';
+end;
+$$;
+
+-- Gasto de una lista en su moneda principal, entre dos fechas [from, to).
+create function private.spent_cents(p_list_id uuid, p_from date, p_to date)
+returns bigint
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(sum((t.amount * 100)::bigint), 0)
+  from public.transactions t
+  join public.lists l on l.id = t.list_id
+  left join public.categories c on c.id = t.category_id
+  where t.list_id = p_list_id
+    and t.currency = l.currency
+    and coalesce(c.kind, 'expense') = 'expense'
+    and t.occurred_on >= p_from
+    and t.occurred_on < p_to;
+$$;
+
+-- Avisos de presupuesto ---------------------------------------------------
+
+/**
+ * Tras guardar un gasto: si la categoría cruzó el 80 % o el 100 % de su
+ * presupuesto este mes (hora local), reserva el aviso y lo devuelve con las
+ * suscripciones del usuario. Corre con los permisos de quien llama (RLS):
+ * solo ve sus listas, su perfil y sus suscripciones.
+ */
+create function public.push_budget_alert(p_category_id uuid, p_occurred_on date)
+returns table (
+  key text,
+  kind text,
+  locale text,
+  hide_amounts boolean,
+  data jsonb,
+  subscriptions jsonb
+)
+language plpgsql
+set search_path = ''
+as $$
+#variable_conflict use_column
+declare
+  v_profile public.profiles;
+  v_today date;
+  v_month date;
+  v_category public.categories;
+  v_budget bigint;
+  v_spent bigint;
+  v_threshold int;
+  v_key text;
+  v_subs jsonb;
+begin
+  select * into v_profile from public.profiles where id = (select auth.uid());
+  if not found or not v_profile.notify_budget then return; end if;
+
+  v_today := public.local_now(v_profile.time_zone)::date;
+  v_month := date_trunc('month', v_today)::date;
+  -- Solo gastos de este mes: corregir uno antiguo no avisa.
+  if date_trunc('month', p_occurred_on)::date <> v_month then return; end if;
+
+  select * into v_category from public.categories
+  where id = p_category_id and kind = 'expense';
+  if not found then return; end if;
+
+  select (b.amount * 100)::bigint into v_budget
+  from public.budgets b where b.category_id = p_category_id;
+  if v_budget is null or v_budget <= 0 then return; end if;
+
+  select coalesce(sum((t.amount * 100)::bigint), 0) into v_spent
+  from public.transactions t
+  join public.lists l on l.id = t.list_id
+  where t.category_id = p_category_id
+    and t.currency = l.currency
+    and t.occurred_on >= v_month
+    and t.occurred_on < (v_month + interval '1 month')::date;
+
+  v_threshold := case
+    when v_spent >= v_budget then 100
+    when v_spent * 10 >= v_budget * 8 then 80
+  end;
+  if v_threshold is null then return; end if;
+
+  select jsonb_agg(jsonb_build_object(
+    'endpoint', s.endpoint, 'p256dh', s.p256dh, 'auth', s.auth))
+  into v_subs
+  from public.push_subscriptions s where s.user_id = v_profile.id;
+  if v_subs is null then return; end if;
+
+  v_key := format('budget:%s:%s:%s', v_threshold, p_category_id, to_char(v_month, 'YYYY-MM'));
+  insert into public.notification_log (user_id, key)
+  values (v_profile.id, v_key)
+  on conflict do nothing;
+  if not found then return; end if;
+  -- Saltar del 70 % al 105 % avisa una vez (100 %), no dos.
+  if v_threshold = 100 then
+    insert into public.notification_log (user_id, key)
+    values (v_profile.id, format('budget:80:%s:%s', p_category_id, to_char(v_month, 'YYYY-MM')))
+    on conflict do nothing;
+  end if;
+
+  return query select
+    v_key,
+    'budget'::text,
+    v_profile.locale,
+    v_profile.notify_hide_amounts,
+    jsonb_build_object(
+      'threshold', v_threshold,
+      'categoryId', v_category.id,
+      'emoji', v_category.emoji,
+      'name', v_category.name,
+      'spentCents', v_spent,
+      'budgetCents', v_budget,
+      'currency', (select l.currency from public.lists l where l.id = v_category.list_id)
+    ),
+    v_subs;
+end;
+$$;
+
+revoke execute on function public.push_budget_alert(uuid, date) from public, anon;
+grant execute on function public.push_budget_alert(uuid, date) to authenticated;
+
+-- Avisos programados ------------------------------------------------------
+
+/**
+ * Lo que toca enviar ahora a todos los usuarios con alguna suscripción:
+ * recurrentes generados, recordatorio diario y cierre de mes. Cada aviso se
+ * reserva en notification_log al devolverlo. Solo con el secreto de
+ * private.push_config (lo envía pg_cron).
+ */
+create function public.push_due(p_secret text)
+returns table (
+  user_id uuid,
+  key text,
+  kind text,
+  locale text,
+  hide_amounts boolean,
+  data jsonb,
+  subscriptions jsonb
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+#variable_conflict use_column
+begin
+  if p_secret is null or p_secret <> (select c.dispatch_secret from private.push_config c) then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  return query
+  with users as (
+    select
+      p.id,
+      p.locale,
+      p.notify_hide_amounts,
+      p.notify_recurring,
+      p.notify_month_close,
+      p.daily_reminder_at,
+      public.local_now(p.time_zone) as local_now,
+      (select min(s.created_at) from public.push_subscriptions s where s.user_id = p.id) as subscribed_at,
+      (select jsonb_agg(jsonb_build_object(
+          'endpoint', s.endpoint, 'p256dh', s.p256dh, 'auth', s.auth))
+        from public.push_subscriptions s where s.user_id = p.id) as subs,
+      -- La lista activa: la primera de las suyas (como en la app).
+      (select l.id from public.lists l
+        join public.list_members m on m.list_id = l.id and m.user_id = p.id
+        order by l.created_at limit 1) as list_id
+    from public.profiles p
+    where exists (select 1 from public.push_subscriptions s where s.user_id = p.id)
+  ),
+  candidates as (
+    -- Recurrentes generados en el último día (y después de suscribirse).
+    select u.id as user_id, 'recurring:' || t.id as key, 'recurring' as kind,
+      jsonb_build_object(
+        'note', t.note,
+        'emoji', c.emoji,
+        'amountCents', (t.amount * 100)::bigint,
+        'currency', t.currency
+      ) as data
+    from users u
+    join public.transactions t on t.list_id = u.list_id
+    left join public.categories c on c.id = t.category_id
+    where u.notify_recurring
+      and t.recurring_id is not null
+      and t.created_at > now() - interval '1 day'
+      and t.created_at >= u.subscribed_at
+
+    union all
+    -- Recordatorio: en la hora siguiente a la elegida, si hoy no anotó nada.
+    select u.id, 'daily:' || to_char(u.local_now, 'YYYY-MM-DD'), 'daily', '{}'::jsonb
+    from users u
+    where u.daily_reminder_at is not null
+      and u.local_now::time >= u.daily_reminder_at
+      and u.local_now::time < u.daily_reminder_at + interval '1 hour'
+      and not exists (
+        select 1 from public.transactions t
+        where t.list_id = u.list_id
+          and t.recurring_id is null
+          and t.occurred_on = u.local_now::date
+      )
+
+    union all
+    -- Cierre de mes: el día 1 entre las 9:00 y las 12:00.
+    select u.id, 'month:' || to_char(u.local_now - interval '1 month', 'YYYY-MM'), 'month',
+      jsonb_build_object(
+        'month', to_char(u.local_now - interval '1 month', 'YYYY-MM'),
+        'spentCents', private.spent_cents(
+          u.list_id,
+          date_trunc('month', u.local_now - interval '1 month')::date,
+          date_trunc('month', u.local_now)::date),
+        'previousSpentCents', private.spent_cents(
+          u.list_id,
+          date_trunc('month', u.local_now - interval '2 months')::date,
+          date_trunc('month', u.local_now - interval '1 month')::date),
+        'currency', (select l.currency from public.lists l where l.id = u.list_id)
+      )
+    from users u
+    where u.notify_month_close
+      and extract(day from u.local_now) = 1
+      and extract(hour from u.local_now) between 9 and 11
+  ),
+  claimed as (
+    insert into public.notification_log (user_id, key)
+    select c.user_id, c.key from candidates c
+    on conflict do nothing
+    returning notification_log.user_id, notification_log.key
+  )
+  select c.user_id, c.key, c.kind, u.locale, u.notify_hide_amounts, c.data, u.subs
+  from candidates c
+  join claimed k on k.user_id = c.user_id and k.key = c.key
+  join users u on u.id = c.user_id;
+end;
+$$;
+
+/** Borra suscripciones que el servicio push dio por muertas (404/410). */
+create function public.push_forget(p_secret text, p_endpoints text[])
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if p_secret is null or p_secret <> (select c.dispatch_secret from private.push_config c) then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+  delete from public.push_subscriptions where endpoint = any (p_endpoints);
+end;
+$$;
+
+revoke execute on function public.push_due(text) from public, authenticated;
+revoke execute on function public.push_forget(text, text[]) from public, authenticated;
+-- La ruta de la app llama sin sesión (rol anon); el secreto es la llave.
+grant execute on function public.push_due(text) to anon, service_role;
+grant execute on function public.push_forget(text, text[]) to anon, service_role;
+
+-- Disparo cada 15 minutos -------------------------------------------------
+
+create extension if not exists pg_net;
+
+create function private.push_tick()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_config private.push_config;
+begin
+  select * into v_config from private.push_config;
+  if v_config.dispatch_url is null then return; end if;
+  perform net.http_post(
+    url := v_config.dispatch_url,
+    headers := jsonb_build_object(
+      'content-type', 'application/json',
+      'x-dispatch-secret', v_config.dispatch_secret
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 20000
+  );
+end;
+$$;
+
+select cron.schedule(
+  'push-notifications',
+  '*/15 * * * *',
+  $$ select private.push_tick(); $$
+);

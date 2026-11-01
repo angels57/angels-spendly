@@ -6,6 +6,8 @@
 //   dispositivo compartido quedarían visibles tras cerrar sesión.
 // - Las Server Actions (POST) y las peticiones RSC no se tocan; Next las
 //   reintenta solo al volver la conexión (experimental.useOffline).
+// - Notificaciones push: el servidor envía { title, body, url, tag }
+//   (src/lib/push/messages.ts); al tocarla se abre esa página.
 
 // v2: páginas offline por idioma (/en/offline, /es/offline).
 const VERSION = "v2";
@@ -82,3 +84,43 @@ async function cacheFirst(request) {
   if (response.ok) cache.put(request, response.clone());
   return response;
 }
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json() ?? {};
+  } catch {
+    // Sin JSON válido: un aviso genérico (el navegador exige mostrar algo).
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title ?? "Spendly", {
+      body: payload.body ?? "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: payload.tag,
+      data: { url: payload.url ?? "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url ?? "/", self.location.origin)
+    .href;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      // Si la app ya está abierta, se reutiliza esa ventana.
+      const open = windows.find((client) => "focus" in client);
+      if (open) {
+        await open.focus();
+        if ("navigate" in open) await open.navigate(url);
+        return;
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
+});
