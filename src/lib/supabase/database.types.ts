@@ -105,28 +105,28 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"default_currency": string,"display_name": string | null,"id": string,"locale": string
+                    "created_at": string,"default_currency": string,"display_name": string | null,"id": string,"locale": string,"time_zone": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id": string,"locale"?: string
+                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id": string,"locale"?: string,"time_zone"?: string
                   }
                   Update: {
-                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"locale"?: string
+                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"locale"?: string,"time_zone"?: string
                   }
                   Relationships: [
                     
                   ]
                 },"recurring_transactions": {
                   Row: {
-                    "amount": number,"category_id": string | null,"created_at": string,"created_by": string,"currency": string,"end_date": string | null,"frequency": Database["public"]['Enums']["recurrence_frequency"],"generated_count": number,"id": string,"list_id": string,"next_run": string,"note": string,"start_date": string
+                    "amount": number,"category_id": string | null,"created_at": string,"created_by": string,"currency": string,"end_date": string | null,"first_day": number | null,"frequency": Database["public"]['Enums']["recurrence_frequency"],"generated_count": number,"id": string,"list_id": string,"next_run": string,"note": string,"second_day": number | null,"start_date": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency": string,"end_date"?: string | null,"frequency"?: Database["public"]['Enums']["recurrence_frequency"],"generated_count"?: number,"id"?: string,"list_id": string,"next_run": string,"note"?: string,"start_date": string
+                    "amount": number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency": string,"end_date"?: string | null,"first_day"?: number | null,"frequency"?: Database["public"]['Enums']["recurrence_frequency"],"generated_count"?: number,"id"?: string,"list_id": string,"next_run": string,"note"?: string,"second_day"?: number | null,"start_date": string
                   }
                   Update: {
-                    "amount"?: number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency"?: string,"end_date"?: string | null,"frequency"?: Database["public"]['Enums']["recurrence_frequency"],"generated_count"?: number,"id"?: string,"list_id"?: string,"next_run"?: string,"note"?: string,"start_date"?: string
+                    "amount"?: number,"category_id"?: string | null,"created_at"?: string,"created_by"?: string,"currency"?: string,"end_date"?: string | null,"first_day"?: number | null,"frequency"?: Database["public"]['Enums']["recurrence_frequency"],"generated_count"?: number,"id"?: string,"list_id"?: string,"next_run"?: string,"note"?: string,"second_day"?: number | null,"start_date"?: string
                   }
                   Relationships: [
                     {
@@ -190,12 +190,21 @@ isOneToOne: false
 "is_list_owner":
 { Args: { "p_list_id": string }; Returns: boolean
                            },
+"clamp_month_day":
+{ Args: { "p_day": number,"p_month": string }; Returns: string
+                           },
+"local_today":
+{ Args: { "p_time_zone": string }; Returns: string
+                           },
 "recurrence_date":
-{ Args: { "p_frequency": Database["public"]['Enums']["recurrence_frequency"],"p_n": number,"p_start": string }; Returns: string
+{ Args: { "p_first_day"?: number,"p_frequency": Database["public"]['Enums']["recurrence_frequency"],"p_n": number,"p_second_day"?: number,"p_start": string }; Returns: string
+                           },
+"semimonthly_date":
+{ Args: { "p_first_day": number,"p_n": number,"p_second_day": number,"p_start": string }; Returns: string
                            }
           }
           Enums: {
-            "category_kind": "expense"|"income","list_role": "owner"|"editor","recurrence_frequency": "weekly"|"monthly"|"yearly","transaction_source": "manual"|"text"|"voice"|"ai"|"recurring"
+            "category_kind": "expense"|"income","list_role": "owner"|"editor","recurrence_frequency": "weekly"|"monthly"|"yearly"|"semimonthly","transaction_source": "manual"|"text"|"voice"|"ai"|"recurring"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -315,7 +324,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "category_kind": ["expense", "income"],"list_role": ["owner", "editor"],"recurrence_frequency": ["weekly", "monthly", "yearly"],"transaction_source": ["manual", "text", "voice", "ai", "recurring"]
+            "category_kind": ["expense", "income"],"list_role": ["owner", "editor"],"recurrence_frequency": ["weekly", "monthly", "yearly", "semimonthly"],"transaction_source": ["manual", "text", "voice", "ai", "recurring"]
           }
         }
 } as const

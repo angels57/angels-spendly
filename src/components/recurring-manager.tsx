@@ -25,11 +25,18 @@ import { dayLabel } from "@/lib/dates";
 import { CurrencySelect } from "@/components/currency-select";
 import { formatAmountInput, formatMoney, type CurrencyCode } from "@/lib/money";
 import { parseAmount, toISODate } from "@/lib/parser";
-import { describeRecurrence, FREQUENCY_LABELS } from "@/lib/recurrence";
+import {
+  describeRecurrence,
+  FREQUENCY_LABELS,
+  monthDayLabel,
+} from "@/lib/recurrence";
 import {
   FREQUENCIES,
+  LAST_DAY_OF_MONTH,
   recurringInputSchema,
   NO_CATEGORY_COLOR,
+  SEMIMONTHLY_FIRST_DAY_MAX,
+  type Frequency,
 } from "@/lib/schemas";
 
 type Editing = { mode: "new" } | { mode: "edit"; rule: RecurringRow };
@@ -93,7 +100,7 @@ export function RecurringManager({
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate font-semibold">{r.note}</span>
                         <span className="truncate text-xs text-muted-foreground">
-                          {describeRecurrence(r.frequency, r.startDate)}
+                          {describeRecurrence(r.frequency, r.startDate, r)}
                           {r.nextRun
                             ? ` · próximo: ${dayLabel(r.nextRun).toLowerCase()}`
                             : r.endDate && ` · terminó ${dayLabel(r.endDate)}`}
@@ -163,9 +170,15 @@ function RecurringForm({
   );
   const [currencyCode, setCurrencyCode] = useState(rule?.currency ?? currency);
   const [categoryId, setCategoryId] = useState(rule?.categoryId ?? "");
-  const [frequency, setFrequency] = useState<(typeof FREQUENCIES)[number]>(
+  const [frequency, setFrequency] = useState<Frequency>(
     rule?.frequency ?? "monthly",
   );
+  // La quincena más común: el 15 y el último día del mes.
+  const [firstDay, setFirstDay] = useState(rule?.firstDay ?? 15);
+  const [secondDay, setSecondDay] = useState(
+    rule?.secondDay ?? LAST_DAY_OF_MONTH,
+  );
+  const semimonthly = frequency === "semimonthly";
   const [startDate, setStartDate] = useState(
     rule?.startDate ?? toISODate(new Date()),
   );
@@ -188,6 +201,8 @@ function RecurringForm({
       frequency,
       startDate,
       endDate: endDate || null,
+      firstDay: semimonthly ? firstDay : null,
+      secondDay: semimonthly ? secondDay : null,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Revisa los datos.");
@@ -288,9 +303,7 @@ function RecurringForm({
           <span className="text-sm font-semibold">Se repite</span>
           <select
             value={frequency}
-            onChange={(e) =>
-              setFrequency(e.target.value as (typeof FREQUENCIES)[number])
-            }
+            onChange={(e) => setFrequency(e.target.value as Frequency)}
             disabled={rule !== null}
             className={selectClassName}
           >
@@ -312,8 +325,50 @@ function RecurringForm({
           />
         </label>
       </div>
+      {semimonthly && (
+        <div className="flex gap-3">
+          <label className="flex flex-1 flex-col gap-1.5">
+            <span className="text-sm font-semibold">Primer día</span>
+            <select
+              value={firstDay}
+              onChange={(e) => {
+                const day = Number(e.target.value);
+                setFirstDay(day);
+                if (secondDay <= day) setSecondDay(LAST_DAY_OF_MONTH);
+              }}
+              disabled={rule !== null}
+              className={selectClassName}
+            >
+              {monthDays(1, SEMIMONTHLY_FIRST_DAY_MAX).map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-1 flex-col gap-1.5">
+            <span className="text-sm font-semibold">Segundo día</span>
+            <select
+              value={secondDay}
+              onChange={(e) => setSecondDay(Number(e.target.value))}
+              disabled={rule !== null}
+              className={selectClassName}
+            >
+              {monthDays(firstDay + 1, LAST_DAY_OF_MONTH).map((day) => (
+                <option key={day} value={day}>
+                  {day === LAST_DAY_OF_MONTH ? "Último día" : day}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
       <p className="-mt-2 text-xs text-muted-foreground">
-        {describeRecurrence(frequency, startDate)}
+        {describeRecurrence(frequency, startDate, { firstDay, secondDay })}
+        {semimonthly &&
+          secondDay < LAST_DAY_OF_MONTH &&
+          secondDay > 28 &&
+          `. Los meses sin día ${secondDay}, ${monthDayLabel(LAST_DAY_OF_MONTH)}`}
         {rule && ". Para cambiar la frecuencia o el inicio, crea uno nuevo."}
       </p>
       <div className="flex flex-col gap-1.5">
@@ -364,4 +419,9 @@ function RecurringForm({
       />
     </form>
   );
+}
+
+/** [from, from + 1, …, to] */
+function monthDays(from: number, to: number) {
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
 }

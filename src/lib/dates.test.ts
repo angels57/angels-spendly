@@ -2,12 +2,37 @@ import { describe, expect, it } from "vitest";
 import {
   addMonths,
   dayLabel,
+  isValidTimeZone,
+  nowInTimeZone,
   monthParam,
   monthRange,
   parseMonthParam,
 } from "./dates";
 
 const NOW = new Date(2026, 9, 25, 12);
+
+describe("nowInTimeZone", () => {
+  // 31 oct, 19:42 en Bogotá = 1 nov, 00:42 UTC.
+  const utc = new Date(Date.UTC(2026, 10, 1, 0, 42));
+
+  it("da la fecha del usuario aunque en UTC ya sea otro día", () => {
+    const now = nowInTimeZone("America/Bogota", utc);
+    expect([now.getFullYear(), now.getMonth(), now.getDate()]).toEqual([
+      2026, 9, 31,
+    ]);
+    expect([now.getHours(), now.getMinutes()]).toEqual([19, 42]);
+    expect(monthParam(parseMonthParam(undefined, now))).toBe("2026-10");
+  });
+
+  it("en UTC sigue siendo noviembre", () => {
+    expect(nowInTimeZone("UTC", utc).getMonth()).toBe(10);
+  });
+
+  it("valida la zona horaria", () => {
+    expect(isValidTimeZone("America/Mexico_City")).toBe(true);
+    expect(isValidTimeZone("Marte/Olympus")).toBe(false);
+  });
+});
 
 describe("dates", () => {
   it("etiqueta hoy, ayer y fechas anteriores", () => {

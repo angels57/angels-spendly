@@ -8,6 +8,8 @@ import { DashboardFeed } from "@/components/dashboard-feed";
 import { getActiveList, getCategories, getTransactions } from "@/lib/data";
 import { budgetStatuses, spentByCategory } from "@/lib/budgets";
 import { startOfMonthISO } from "@/lib/dates";
+import { toISODate } from "@/lib/parser";
+import { userNow } from "@/lib/today";
 
 const RECENT_LIMIT = 20;
 
@@ -22,13 +24,13 @@ export default function Home() {
 async function Dashboard() {
   // "Hoy" y "este mes" dependen de la hora: se calculan en cada request.
   await connection();
-  const list = await getActiveList();
+  const [list, now] = await Promise.all([getActiveList(), userNow()]);
+  const monthStart = startOfMonthISO(now);
   const [categories, monthTransactions, recent] = await Promise.all([
     getCategories(list.id),
-    getTransactions(list.id, { from: startOfMonthISO() }),
+    getTransactions(list.id, { from: monthStart }),
     getTransactions(list.id, { limit: RECENT_LIMIT }),
   ]);
-  const monthStart = startOfMonthISO();
   // Los presupuestos están en la moneda principal.
   const monthExpenses = monthTransactions.filter(
     (t) => t.category?.kind !== "income" && t.currency === list.currency,
@@ -36,7 +38,11 @@ async function Dashboard() {
 
   return (
     <>
-      <MonthSummary transactions={monthTransactions} currency={list.currency} />
+      <MonthSummary
+        transactions={monthTransactions}
+        currency={list.currency}
+        now={now}
+      />
       <BudgetProgress
         statuses={budgetStatuses(categories, monthExpenses)}
         categories={categories}
@@ -56,6 +62,7 @@ async function Dashboard() {
         }
         categories={categories}
         currency={list.currency}
+        today={toISODate(now)}
         month={monthStart.slice(0, 7)}
         spentThisMonth={spentByCategory(monthExpenses)}
       />
