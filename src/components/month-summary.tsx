@@ -20,9 +20,12 @@ const MAX_BARS = 5;
 export function MonthSummary({
   transactions,
   currency,
+  now,
 }: {
   transactions: TransactionRow[];
   currency: CurrencyCode;
+  /** Ahora, en la zona horaria del usuario. */
+  now: Date;
 }) {
   let spent = 0;
   let income = 0;
@@ -62,7 +65,7 @@ export function MonthSummary({
     <Card>
       <CardHeader>
         <CardDescription className="first-letter:uppercase">
-          Gastado en {monthLabel()}
+          Gastado en {monthLabel(now)}
         </CardDescription>
         <CardTitle className="text-4xl font-extrabold tracking-tight">
           {formatMoney(spent, currency)}

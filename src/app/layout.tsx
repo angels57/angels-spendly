@@ -3,7 +3,11 @@ import { Geist_Mono, Nunito } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardInset } from "@/components/keyboard-inset";
-import { OfflineBanner, ServiceWorkerRegistration } from "@/components/pwa";
+import {
+  OfflineBanner,
+  ServiceWorkerRegistration,
+  TimeZoneSync,
+} from "@/components/pwa";
 import "./globals.css";
 import { APP_NAME, APP_SHORT_NAME, APP_TAGLINE } from "@/lib/brand";
 
@@ -56,6 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <OfflineBanner />
+          <TimeZoneSync />
           {children}
           {/* Arriba: abajo taparía el quick add en el celular. */}
           <Toaster position="top-center" />

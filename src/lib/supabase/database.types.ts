@@ -105,14 +105,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "created_at": string,"default_currency": string,"display_name": string | null,"id": string,"locale": string
+                    "created_at": string,"default_currency": string,"display_name": string | null,"id": string,"locale": string,"time_zone": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id": string,"locale"?: string
+                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id": string,"locale"?: string,"time_zone"?: string
                   }
                   Update: {
-                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"locale"?: string
+                    "created_at"?: string,"default_currency"?: string,"display_name"?: string | null,"id"?: string,"locale"?: string,"time_zone"?: string
                   }
                   Relationships: [
                     
@@ -192,6 +192,9 @@ isOneToOne: false
                            },
 "clamp_month_day":
 { Args: { "p_day": number,"p_month": string }; Returns: string
+                           },
+"local_today":
+{ Args: { "p_time_zone": string }; Returns: string
                            },
 "recurrence_date":
 { Args: { "p_first_day"?: number,"p_frequency": Database["public"]['Enums']["recurrence_frequency"],"p_n": number,"p_second_day"?: number,"p_start": string }; Returns: string

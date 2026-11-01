@@ -18,6 +18,7 @@ export function DashboardFeed({
   more,
   categories,
   currency,
+  today,
   month,
   spentThisMonth,
 }: {
@@ -26,6 +27,8 @@ export function DashboardFeed({
   more?: React.ReactNode;
   categories: Category[];
   currency: CurrencyCode;
+  /** Hoy (YYYY-MM-DD) en la zona horaria del usuario. */
+  today: string;
   month: string;
   spentThisMonth: Record<string, number>;
 }) {
@@ -44,6 +47,7 @@ export function DashboardFeed({
         transactions={transactions}
         categories={categories}
         currency={currency}
+        today={today}
       />
       {more}
       <div className="sticky bottom-0 mt-auto bg-gradient-to-t from-background via-background pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
