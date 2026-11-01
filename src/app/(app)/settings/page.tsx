@@ -5,6 +5,7 @@ import { ChevronRight, Download, LogOut, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CurrencySettings } from "@/components/currency-settings";
+import { OnDeviceAISettings } from "@/components/on-device-ai-settings";
 import { InstallRow, ThemeSelect } from "@/components/settings";
 import { signOut } from "@/app/login/actions";
 import { getActiveList, getCurrentUser } from "@/lib/data";
@@ -54,6 +55,10 @@ async function Settings() {
         <RowLink href="/recurring" icon={<Repeat className="size-5" />}>
           Movimientos recurrentes
         </RowLink>
+      </Section>
+
+      <Section title="Voz">
+        <OnDeviceAISettings />
       </Section>
 
       <Section title="Datos">

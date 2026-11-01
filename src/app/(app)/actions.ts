@@ -22,11 +22,11 @@ type Result<T = undefined> =
 const SAVE_ERROR = "No se pudo guardar. Inténtalo de nuevo.";
 
 export async function createTransaction(
-  input: TransactionInput & { source: "manual" | "text" },
+  input: TransactionInput & { source: "manual" | "text" | "voice" },
 ): Promise<Result> {
   await getCurrentUser();
   const parsed = transactionInputSchema
-    .extend({ source: z.enum(["manual", "text"]) })
+    .extend({ source: z.enum(["manual", "text", "voice"]) })
     .safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: "Revisa el monto y la fecha." };

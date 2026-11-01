@@ -5,6 +5,7 @@ import { QuickAdd } from "@/components/quick-add";
 import { TransactionList } from "@/components/transaction-list";
 import type { Category, TransactionRow } from "@/lib/data";
 import type { CurrencyCode } from "@/lib/money";
+import type { CategoryHistory } from "@/lib/parser";
 
 /**
  * Movimientos recientes + quick add del inicio. Comparten estado para el
@@ -17,6 +18,7 @@ export function DashboardFeed({
   recent,
   more,
   categories,
+  history,
   currency,
   today,
   month,
@@ -26,6 +28,7 @@ export function DashboardFeed({
   /** Enlace "Ver todos", si hay más de los que se muestran. */
   more?: React.ReactNode;
   categories: Category[];
+  history: CategoryHistory;
   currency: CurrencyCode;
   /** Hoy (YYYY-MM-DD) en la zona horaria del usuario. */
   today: string;
@@ -53,6 +56,7 @@ export function DashboardFeed({
       <div className="sticky bottom-0 mt-auto bg-gradient-to-t from-background via-background pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <QuickAdd
           categories={categories}
+          history={history}
           currency={currency}
           month={month}
           spentThisMonth={spentThisMonth}

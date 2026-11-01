@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { asCurrencyCode, toCents, type CurrencyCode } from "@/lib/money";
+import { learnCategories, type CategoryHistory } from "@/lib/parser";
 import type { Frequency } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -161,6 +162,30 @@ export async function getTransactions(
     category: t.category,
     recurring: t.recurring_id !== null,
   }));
+}
+
+const HISTORY_LIMIT = 500;
+
+/**
+ * Lo que el quick add aprende del historial: los últimos movimientos con
+ * nota y categoría, del más reciente al más antiguo.
+ */
+export async function getCategoryHistory(
+  listId: string,
+): Promise<CategoryHistory> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("note, category_id")
+    .eq("list_id", listId)
+    .not("category_id", "is", null)
+    .neq("note", "")
+    .order("created_at", { ascending: false })
+    .limit(HISTORY_LIMIT);
+  if (error) throw error;
+  return learnCategories(
+    data.map((t) => ({ note: t.note, categoryId: t.category_id! })),
+  );
 }
 
 export async function getRecurring(listId: string): Promise<RecurringRow[]> {

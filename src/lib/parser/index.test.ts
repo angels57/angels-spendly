@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseExpense, type ParserCategory } from "./index";
+import {
+  learnCategories,
+  parseExpense,
+  type HistoryEntry,
+  type ParserCategory,
+} from "./index";
 
 // Domingo 25 de octubre de 2026, mediodía (hora local).
 const NOW = new Date(2026, 9, 25, 12, 0, 0);
@@ -98,6 +103,7 @@ describe("parseExpense: fecha", () => {
     ["comida 12 hoy", "2026-10-25"],
     ["comida 12 ayer", "2026-10-24"],
     ["uber 15 anteayer", "2026-10-23"],
+    ["cine con amigos 20.000 ante ayer", "2026-10-23"],
     ["lunch 12 yesterday", "2026-10-24"],
     ["súper 45,50 el viernes pasado", "2026-10-23"],
     ["groceries 45.50 last friday", "2026-10-23"],
@@ -143,5 +149,80 @@ describe("parseExpense: categoría y nota", () => {
     expect(parse("súper 45,50 el viernes pasado").note).toBe("Súper");
     expect(parse("cena 30€ el 3 de octubre").note).toBe("Cena");
     expect(parse("$12").note).toBe("");
+  });
+});
+
+describe("parseExpense: categoría aprendida del historial", () => {
+  // De la más reciente a la más antigua, como las devuelve la base.
+  const entries: HistoryEntry[] = [
+    { note: "Tinto", categoryId: "cafe" },
+    { note: "Sushi con Ana", categoryId: "comida" },
+    { note: "Regalo para Ana", categoryId: "ocio" },
+    { note: "Peajes", categoryId: "transporte" },
+    { note: "Uber al aeropuerto", categoryId: "casa" },
+    { note: "D1", categoryId: "super" },
+    { note: "Tinto", categoryId: "comida" },
+    { note: "Zapatos", categoryId: "borrada" },
+  ];
+  const history = learnCategories(entries);
+  const parseWith = (text: string) =>
+    parseExpense(text, categories, NOW, history).categoryId;
+
+  it.each([
+    ["tinto 3 mil", "cafe"],
+    ["sushi 40 mil", "comida"],
+    ["d1 25 mil", "super"],
+    ["peaje 12 mil", "transporte"],
+    ["peajes de la semana 30 mil", "transporte"],
+  ])("%s → %s", (text, categoryId) => {
+    expect(parseWith(text)).toBe(categoryId);
+  });
+
+  it("la nota idéntica respeta la corrección del usuario", () => {
+    expect(parseWith("uber al aeropuerto 50 mil")).toBe("casa");
+  });
+
+  it("las palabras clave ganan a una palabra suelta del historial", () => {
+    expect(parseWith("uber 15")).toBe("transporte");
+  });
+
+  it("una palabra repartida entre categorías no decide", () => {
+    expect(parseWith("ana 20")).toBeNull();
+  });
+
+  it("ignora categorías que ya no existen", () => {
+    expect(parseWith("zapatos 60")).toBeNull();
+  });
+
+  it("sin historial se comporta como antes", () => {
+    expect(parse("tinto 3 mil").categoryId).toBeNull();
+  });
+});
+
+describe("learnCategories", () => {
+  it("en un empate gana la más reciente", () => {
+    const history = learnCategories([
+      { note: "Tinto", categoryId: "cafe" },
+      { note: "Tinto", categoryId: "comida" },
+    ]);
+    expect(history.notes.tinto).toBe("cafe");
+  });
+
+  it("gana la categoría más usada", () => {
+    const history = learnCategories([
+      { note: "Tinto", categoryId: "cafe" },
+      { note: "Tinto", categoryId: "comida" },
+      { note: "Tinto", categoryId: "comida" },
+    ]);
+    expect(history.notes.tinto).toBe("comida");
+  });
+
+  it("no aprende palabras vacías, números ni notas vacías", () => {
+    const history = learnCategories([
+      { note: "Almuerzo de la 2", categoryId: "comida" },
+      { note: "", categoryId: "ocio" },
+    ]);
+    expect(Object.keys(history.words).sort()).toEqual(["almuerzo"]);
+    expect(Object.keys(history.notes)).toEqual(["almuerzo de la 2"]);
   });
 });

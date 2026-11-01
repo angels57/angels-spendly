@@ -5,7 +5,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BudgetProgress } from "@/components/budget-progress";
 import { MonthSummary } from "@/components/month-summary";
 import { DashboardFeed } from "@/components/dashboard-feed";
-import { getActiveList, getCategories, getTransactions } from "@/lib/data";
+import {
+  getActiveList,
+  getCategories,
+  getCategoryHistory,
+  getTransactions,
+} from "@/lib/data";
 import { budgetStatuses, spentByCategory } from "@/lib/budgets";
 import { startOfMonthISO } from "@/lib/dates";
 import { toISODate } from "@/lib/parser";
@@ -26,10 +31,11 @@ async function Dashboard() {
   await connection();
   const [list, now] = await Promise.all([getActiveList(), userNow()]);
   const monthStart = startOfMonthISO(now);
-  const [categories, monthTransactions, recent] = await Promise.all([
+  const [categories, monthTransactions, recent, history] = await Promise.all([
     getCategories(list.id),
     getTransactions(list.id, { from: monthStart }),
     getTransactions(list.id, { limit: RECENT_LIMIT }),
+    getCategoryHistory(list.id),
   ]);
   // Los presupuestos están en la moneda principal.
   const monthExpenses = monthTransactions.filter(
@@ -61,6 +67,7 @@ async function Dashboard() {
           )
         }
         categories={categories}
+        history={history}
         currency={list.currency}
         today={toISODate(now)}
         month={monthStart.slice(0, 7)}
